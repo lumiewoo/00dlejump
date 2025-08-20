@@ -38,7 +38,13 @@ class MusicalDoodleJump {
         this.cameraY = 0;
         this.isPaused = false;
         
-        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        // Initialize AudioContext - will be resumed on first user interaction
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {
+            console.warn('Web Audio API not supported:', e);
+            this.audioContext = null;
+        }
         this.musicBuffer = [];
         this.gameStartTime = performance.now();
         
@@ -69,6 +75,8 @@ class MusicalDoodleJump {
         this.isMoving = false;
         this.lastTapTime = 0;
         this.tapCount = 0;
+        this.touchHeld = false;
+        this.touchDirection = 0; // -1 for left, 1 for right, 0 for none
         
         this.scales = {
             major: [0, 2, 4, 5, 7, 9, 11, 12],
@@ -335,8 +343,12 @@ class MusicalDoodleJump {
             this.keys[e.code] = true;
             
             // Resume AudioContext on first keypress (required for Chrome autoplay policy)
-            if (this.audioContext.state === 'suspended') {
-                this.audioContext.resume();
+            if (this.audioContext && this.audioContext.state === 'suspended') {
+                this.audioContext.resume().then(() => {
+                    console.log('AudioContext resumed successfully');
+                }).catch(err => {
+                    console.warn('Failed to resume AudioContext:', err);
+                });
             }
             
             if (e.code === 'Space') {
@@ -377,8 +389,12 @@ class MusicalDoodleJump {
             e.preventDefault();
             
             // Resume AudioContext on first touch (required for mobile Chrome)
-            if (this.audioContext.state === 'suspended') {
-                this.audioContext.resume();
+            if (this.audioContext && this.audioContext.state === 'suspended') {
+                this.audioContext.resume().then(() => {
+                    console.log('AudioContext resumed successfully');
+                }).catch(err => {
+                    console.warn('Failed to resume AudioContext:', err);
+                });
             }
             
             const touch = e.touches[0];
@@ -387,14 +403,13 @@ class MusicalDoodleJump {
             
             // Determine movement based on screen half
             const screenMidpoint = this.canvas.width / 2;
+            this.touchHeld = true;
             if (touch.clientX < screenMidpoint) {
                 // Left half - move left
-                this.player.vx = -this.moveSpeed;
-                this.player.isMoving = true;
+                this.touchDirection = -1;
             } else {
                 // Right half - move right
-                this.player.vx = this.moveSpeed;
-                this.player.isMoving = true;
+                this.touchDirection = 1;
             }
             
             // Handle tap/double tap for pause/export
@@ -420,6 +435,8 @@ class MusicalDoodleJump {
         this.canvas.addEventListener('touchend', (e) => {
             e.preventDefault();
             // Stop movement when touch ends
+            this.touchHeld = false;
+            this.touchDirection = 0;
             this.player.vx = 0;
             this.player.isMoving = false;
         });
@@ -638,6 +655,8 @@ class MusicalDoodleJump {
     }
     
     playSine(frequency, volume = 0.3) {
+        if (!this.audioContext) return;
+        
         const oscillator = this.audioContext.createOscillator();
         const gainNode = this.audioContext.createGain();
         
@@ -655,6 +674,8 @@ class MusicalDoodleJump {
     }
     
     playPiano(frequency, volume = 0.3) {
+        if (!this.audioContext) return;
+        
         const osc1 = this.audioContext.createOscillator();
         const osc2 = this.audioContext.createOscillator();
         const gainNode = this.audioContext.createGain();
@@ -684,6 +705,8 @@ class MusicalDoodleJump {
     }
     
     playSupersaw(frequency, volume = 0.3) {
+        if (!this.audioContext) return;
+        
         const voices = 7;
         const detune = 10;
         const gainNode = this.audioContext.createGain();
@@ -710,6 +733,8 @@ class MusicalDoodleJump {
     }
     
     playPad(frequency, volume = 0.2) {
+        if (!this.audioContext) return;
+        
         const osc1 = this.audioContext.createOscillator();
         const osc2 = this.audioContext.createOscillator();
         const filter = this.audioContext.createBiquadFilter();
@@ -743,6 +768,8 @@ class MusicalDoodleJump {
     }
     
     playBrass(frequency, volume = 0.3) {
+        if (!this.audioContext) return;
+        
         const osc1 = this.audioContext.createOscillator();
         const osc2 = this.audioContext.createOscillator();
         const osc3 = this.audioContext.createOscillator();
@@ -788,6 +815,8 @@ class MusicalDoodleJump {
     }
     
     playFlute(frequency, volume = 0.3) {
+        if (!this.audioContext) return;
+        
         const osc = this.audioContext.createOscillator();
         const noise = this.audioContext.createOscillator();
         const filter = this.audioContext.createBiquadFilter();
@@ -841,17 +870,25 @@ class MusicalDoodleJump {
         // Check if player is moving for emoji animation
         this.player.isMoving = false;
         
+        // Handle desktop controls
         if (this.keys['ArrowLeft']) {
             this.player.vx = -this.moveSpeed;
             this.player.isMoving = true;
         } else if (this.keys['ArrowRight']) {
             this.player.vx = this.moveSpeed;
             this.player.isMoving = true;
-        } else {
+        } else if (!this.touchHeld) {
+            // Only apply friction if not holding touch
             this.player.vx *= 0.8;
         }
         
-        // Check if mobile touch is moving
+        // Handle mobile touch controls
+        if (this.touchHeld && this.touchDirection !== 0) {
+            this.player.vx = this.touchDirection * this.moveSpeed;
+            this.player.isMoving = true;
+        }
+        
+        // Check if player is moving for animation
         if (Math.abs(this.player.vx) > 0.5) {
             this.player.isMoving = true;
         }
