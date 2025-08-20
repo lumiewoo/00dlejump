@@ -874,8 +874,12 @@ class MusicalDoodleJump {
         this.player.onGround = false;
         
         for (let platform of this.platforms) {
+            // Skip collision with platforms in top 10% of viewport
+            const topBoundary = this.canvas.height * 0.1;
+            
             if (this.player.vy > 0 &&
                 !this.fallingThrough && // Don't collide if falling through
+                platform.y >= topBoundary && // Only collide with platforms below top 10%
                 this.player.x + this.player.width > platform.x &&
                 this.player.x < platform.x + platform.width &&
                 this.player.y + this.player.height > platform.y &&
@@ -1017,9 +1021,20 @@ class MusicalDoodleJump {
             this.ctx.fillStyle = platform.color || '#4caf50';
             this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
             
-            this.ctx.strokeStyle = '#000';
-            this.ctx.lineWidth = 1;
-            this.ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+            // Check if this is the root note (first note in the scale)
+            const isRootNote = platform.note.startsWith(this.selectedKey);
+            
+            if (isRootNote) {
+                // Thick black border for root note
+                this.ctx.strokeStyle = '#000';
+                this.ctx.lineWidth = 3;
+                this.ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+            } else {
+                // Normal border for other notes
+                this.ctx.strokeStyle = '#000';
+                this.ctx.lineWidth = 1;
+                this.ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+            }
             
             this.ctx.fillStyle = '#000';
             this.ctx.font = '14px Arial';
