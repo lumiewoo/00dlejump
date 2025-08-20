@@ -134,6 +134,44 @@
                 font-size: 12px;
             }
         }
+        
+        #hamburgerMenu {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+        }
+        
+        #hamburgerIcon {
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid #333;
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 20px;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        #hamburgerIcon:hover {
+            background: rgba(255, 255, 255, 1);
+        }
+        
+        @media (max-width: 768px) {
+            #controls.mobile-hidden {
+                display: none !important;
+            }
+            
+            #controls.mobile-visible {
+                position: absolute;
+                top: 60px;
+                left: 10px;
+                z-index: 999;
+                background: rgba(255, 255, 255, 0.95);
+                border: 2px solid #333;
+                border-radius: 5px;
+                max-width: 200px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -147,9 +185,12 @@
             <span class="desktop-controls">← → to move | ↑ max jump | ↓ fall through<br>
             Spacebar to pause<br>
             Enter to export entire session as MIDI</span>
-            <span class="mobile-controls" style="display: none;">Hold and drag to move<br>
-            Tap to pause<br>
+            <span class="mobile-controls" style="display: none;">Hold left/right side to move<br>
+            Tap menu to configure<br>
             Double tap to export MIDI</span>
+        </div>
+        <div id="hamburgerMenu" style="display: none;">
+            <div id="hamburgerIcon">☰</div>
         </div>
         <div id="controls">
             <label>Key:</label>

@@ -253,10 +253,46 @@ class MusicalDoodleJump {
             document.querySelector('.desktop-controls').style.display = 'none';
             document.querySelector('.mobile-controls').style.display = 'block';
             
-            // Hide some controls on mobile for cleaner UI
+            // Show hamburger menu and hide controls initially on mobile
+            document.getElementById('hamburgerMenu').style.display = 'block';
             const controls = document.getElementById('controls');
             controls.style.fontSize = '10px';
+            controls.classList.add('mobile-hidden');
+            
+            // Setup hamburger menu toggle
+            this.setupHamburgerMenu();
         }
+    }
+    
+    setupHamburgerMenu() {
+        const hamburgerIcon = document.getElementById('hamburgerIcon');
+        const controls = document.getElementById('controls');
+        let menuOpen = false;
+        
+        hamburgerIcon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menuOpen = !menuOpen;
+            
+            if (menuOpen) {
+                controls.classList.remove('mobile-hidden');
+                controls.classList.add('mobile-visible');
+                hamburgerIcon.textContent = '×';
+            } else {
+                controls.classList.remove('mobile-visible');
+                controls.classList.add('mobile-hidden');
+                hamburgerIcon.textContent = '☰';
+            }
+        });
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (menuOpen && !controls.contains(e.target) && !hamburgerIcon.contains(e.target)) {
+                menuOpen = false;
+                controls.classList.remove('mobile-visible');
+                controls.classList.add('mobile-hidden');
+                hamburgerIcon.textContent = '☰';
+            }
+        });
     }
     
     setupGenderSelector() {
@@ -298,6 +334,11 @@ class MusicalDoodleJump {
         window.addEventListener('keydown', (e) => {
             this.keys[e.code] = true;
             
+            // Resume AudioContext on first keypress (required for Chrome autoplay policy)
+            if (this.audioContext.state === 'suspended') {
+                this.audioContext.resume();
+            }
+            
             if (e.code === 'Space') {
                 e.preventDefault();
                 this.togglePause();
@@ -334,19 +375,33 @@ class MusicalDoodleJump {
         // Mobile touch controls
         this.canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
+            
+            // Resume AudioContext on first touch (required for mobile Chrome)
+            if (this.audioContext.state === 'suspended') {
+                this.audioContext.resume();
+            }
+            
             const touch = e.touches[0];
             this.touchStartX = touch.clientX;
             this.touchStartY = touch.clientY;
-            this.isMoving = true;
             
-            // Handle tap/double tap
+            // Determine movement based on screen half
+            const screenMidpoint = this.canvas.width / 2;
+            if (touch.clientX < screenMidpoint) {
+                // Left half - move left
+                this.player.vx = -this.moveSpeed;
+                this.player.isMoving = true;
+            } else {
+                // Right half - move right
+                this.player.vx = this.moveSpeed;
+                this.player.isMoving = true;
+            }
+            
+            // Handle tap/double tap for pause/export
             const currentTime = Date.now();
             if (currentTime - this.lastTapTime < 300) {
                 this.tapCount++;
-                if (this.tapCount === 1) {
-                    // Single tap - pause
-                    this.togglePause();
-                } else if (this.tapCount === 2) {
+                if (this.tapCount === 2) {
                     // Double tap - export MIDI
                     this.exportMIDI();
                     this.tapCount = 0;
@@ -359,25 +414,14 @@ class MusicalDoodleJump {
         
         this.canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
-            if (!this.isMoving) return;
-            
-            const touch = e.touches[0];
-            const deltaX = touch.clientX - this.touchStartX;
-            
-            // Convert touch movement to player velocity
-            this.player.vx = Math.max(-this.moveSpeed, Math.min(this.moveSpeed, deltaX * 0.1));
-            
-            // Mark as moving if velocity is significant
-            if (Math.abs(this.player.vx) > 0.5) {
-                this.player.isMoving = true;
-            }
+            // Keep movement consistent with touchstart - no change needed for new control scheme
         });
         
         this.canvas.addEventListener('touchend', (e) => {
             e.preventDefault();
-            this.isMoving = false;
-            this.player.vx *= 0.8; // Gradual slowdown
-            this.player.isMoving = false; // Stop running animation
+            // Stop movement when touch ends
+            this.player.vx = 0;
+            this.player.isMoving = false;
         });
         
         // Prevent context menu on long press
@@ -819,6 +863,12 @@ class MusicalDoodleJump {
         if (this.player.x < 0) this.player.x = 0;
         if (this.player.x + this.player.width > this.canvas.width) {
             this.player.x = this.canvas.width - this.player.width;
+        }
+        
+        // Collision with top of screen
+        if (this.player.y < 0) {
+            this.player.y = 0;
+            this.player.vy = 0; // Stop upward velocity when hitting ceiling
         }
         
         this.player.onGround = false;
