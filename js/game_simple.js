@@ -957,13 +957,10 @@ class MusicalDoodleJump {
         }
         this.ctx.restore();
         
-        // Only render platforms not in top 10% or bottom 10% of screen
-        const topBoundary = this.canvas.height * 0.1;
-        const bottomBoundary = this.canvas.height * 0.9;
-        
         for (let platform of this.platforms) {
-            // Skip rendering if platform is in top 10% or bottom 10% of screen
-            if (platform.y < topBoundary || platform.y > bottomBoundary) {
+            // Skip rendering if platform is above top 10% of viewport or completely out of view
+            const topBoundary = this.canvas.height * 0.1;
+            if (platform.y < topBoundary || platform.y > this.canvas.height) {
                 continue;
             }
             
