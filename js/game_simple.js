@@ -445,6 +445,20 @@ class MusicalDoodleJump {
         this.canvas.addEventListener('contextmenu', (e) => {
             e.preventDefault();
         });
+        
+        // Auto-pause when window loses focus
+        window.addEventListener('blur', () => {
+            if (!this.isPaused) {
+                this.togglePause();
+            }
+        });
+        
+        // Optionally auto-resume when window regains focus (commented out for manual control)
+        // window.addEventListener('focus', () => {
+        //     if (this.isPaused) {
+        //         this.togglePause();
+        //     }
+        // });
     }
     
     togglePause() {
@@ -1084,6 +1098,25 @@ class MusicalDoodleJump {
         this.ctx.textAlign = 'left';
         this.ctx.fillText(`Height: ${Math.max(0, Math.floor((500 - this.player.y) / 10))}m`, 10, 30);
         this.ctx.fillText(`Buffer: ${this.musicBuffer.length} notes`, 10, 50);
+        
+        // Draw pause indicator if paused
+        if (this.isPaused) {
+            // Semi-transparent overlay
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            // Pause text
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.font = 'bold 48px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText('PAUSED', this.canvas.width / 2, this.canvas.height / 2);
+            
+            // Instruction text
+            this.ctx.font = '20px Arial';
+            const instructionText = this.isMobile ? 'Tap to resume' : 'Press SPACE to resume';
+            this.ctx.fillText(instructionText, this.canvas.width / 2, this.canvas.height / 2 + 60);
+        }
     }
     
     exportMIDI() {
