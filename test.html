@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Musical Doodle Jump - Unit Tests</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .test-suite {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .test-pass {
+            color: green;
+            margin: 5px 0;
+        }
+        .test-fail {
+            color: red;
+            margin: 5px 0;
+        }
+        .test-error {
+            color: red;
+            background: #ffe0e0;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+        }
+        h2 {
+            border-bottom: 2px solid #333;
+            padding-bottom: 5px;
+        }
+        .summary {
+            margin-top: 20px;
+            padding: 15px;
+            background: #333;
+            color: white;
+            border-radius: 5px;
+        }
+        canvas { display: none; }
+    </style>
+</head>
+<body>
+    <h1>Musical Doodle Jump - Unit Tests</h1>
+    <div id="test-results"></div>
+    <div id="summary" class="summary"></div>
+    
+    <!-- Hidden canvas for game initialization -->
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- Mock HTML elements for the game -->
+    <div style="display: none;">
+        <div id="status"></div>
+        <select id="soundSelect"></select>
+        <select id="keySelect"></select>
+        <select id="scaleSelect"></select>
+        <select id="modeSelect"></select>
+        <input type="checkbox" id="arpCheckbox">
+    </div>
+    
+    <script src="js/game_simple.js"></script>
+    <script>
+        class TestRunner {
+            constructor() {
+                this.results = [];
+                this.currentSuite = '';
+                this.game = null;
+            }
+            
+            suite(name, fn) {
+                this.currentSuite = name;
+                const suiteDiv = document.createElement('div');
+                suiteDiv.className = 'test-suite';
+                suiteDiv.innerHTML = `<h2>${name}</h2>`;
+                document.getElementById('test-results').appendChild(suiteDiv);
+                this.currentSuiteDiv = suiteDiv;
+                fn();
+            }
+            
+            test(name, fn) {
+                const testDiv = document.createElement('div');
+                try {
+                    fn();
+                    testDiv.className = 'test-pass';
+                    testDiv.textContent = `✓ ${name}`;
+                    this.results.push({ suite: this.currentSuite, test: name, passed: true });
+                } catch (error) {
+                    testDiv.className = 'test-fail';
+                    testDiv.innerHTML = `✗ ${name}<div class="test-error">${error.message}</div>`;
+                    this.results.push({ suite: this.currentSuite, test: name, passed: false, error: error.message });
+                }
+                this.currentSuiteDiv.appendChild(testDiv);
+            }
+            
+            assertEqual(actual, expected, message = '') {
+                if (actual !== expected) {
+                    throw new Error(`${message}\nExpected: ${expected}\nActual: ${actual}`);
+                }
+            }
+            
+            assertArrayEqual(actual, expected, message = '') {
+                if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+                    throw new Error(`${message}\nExpected: ${JSON.stringify(expected)}\nActual: ${JSON.stringify(actual)}`);
+                }
+            }
+            
+            assertInRange(value, min, max, message = '') {
+                if (value < min || value > max) {
+                    throw new Error(`${message}\nValue ${value} not in range [${min}, ${max}]`);
+                }
+            }
+            
+            assertTrue(condition, message = '') {
+                if (!condition) {
+                    throw new Error(message || 'Assertion failed');
+                }
+            }
+            
+            showSummary() {
+                const passed = this.results.filter(r => r.passed).length;
+                const failed = this.results.filter(r => !r.passed).length;
+                const total = this.results.length;
+                
+                const summaryDiv = document.getElementById('summary');
+                summaryDiv.innerHTML = `
+                    <h3>Test Summary</h3>
+                    <p>Total: ${total} | Passed: ${passed} | Failed: ${failed}</p>
+                    <p>${passed === total ? '✓ All tests passed!' : '✗ Some tests failed'}</p>
+                `;
+            }
+        }
+        
+        // Run tests after page loads
+        window.addEventListener('load', () => {
+            const runner = new TestRunner();
+            
+            // Initialize a test game instance
+            const game = new MusicalDoodleJump();
+            runner.game = game;
+            
+            // Wait a bit for game to initialize
+            setTimeout(() => {
+                
+                // Test Suite: Note Recording
+                runner.suite('Note Recording', () => {
+                    
+                    runner.test('Should record single note with velocity', () => {
+                        game.musicBuffer = [];
+                        game.recordNote('C4', 1000, 0.5);
+                        
+                        runner.assertEqual(game.musicBuffer.length, 1, 'Should have 1 note in buffer');
+                        runner.assertEqual(game.musicBuffer[0].note, 'C4', 'Note should be C4');
+                        runner.assertEqual(game.musicBuffer[0].velocity, 63, 'Velocity should be 63 (0.5 * 127)');
+                        runner.assertTrue(game.musicBuffer[0].time >= 0, 'Time should be non-negative');
+                    });
+                    
+                    runner.test('Should record multiple notes', () => {
+                        game.musicBuffer = [];
+                        game.recordNote('C4', 1000, 0.5);
+                        game.recordNote('E4', 1100, 0.75);
+                        game.recordNote('G4', 1200, 1.0);
+                        
+                        runner.assertEqual(game.musicBuffer.length, 3, 'Should have 3 notes in buffer');
+                        runner.assertEqual(game.musicBuffer[1].note, 'E4', 'Second note should be E4');
+                        runner.assertEqual(game.musicBuffer[2].velocity, 127, 'Third note velocity should be 127');
+                    });
+                    
+                    runner.test('Should handle velocity range correctly', () => {
+                        game.musicBuffer = [];
+                        game.recordNote('C4', 1000, 0.25);
+                        game.recordNote('D4', 1000, 0.5);
+                        game.recordNote('E4', 1000, 0.75);
+                        game.recordNote('F4', 1000, 1.0);
+                        
+                        runner.assertEqual(game.musicBuffer[0].velocity, 32, 'Velocity at 0.25 should be 32');
+                        runner.assertEqual(game.musicBuffer[1].velocity, 63, 'Velocity at 0.5 should be 63');
+                        runner.assertEqual(game.musicBuffer[2].velocity, 95, 'Velocity at 0.75 should be 95');
+                        runner.assertEqual(game.musicBuffer[3].velocity, 127, 'Velocity at 1.0 should be 127');
+                    });
+                });
+                
+                // Test Suite: Chord Recording
+                runner.suite('Chord Recording', () => {
+                    
+                    runner.test('Should record all chord notes', () => {
+                        game.musicBuffer = [];
+                        game.selectedMode = 'chord';
+                        
+                        // Manually call playChord to test it
+                        const originalPlaySound = game.playSine;
+                        game.playSine = () => {}; // Mock sound playing
+                        game.playPiano = () => {};
+                        game.playSupersaw = () => {};
+                        game.playPad = () => {};
+                        game.playBrass = () => {};
+                        game.playFlute = () => {};
+                        
+                        game.playChord('C4', 0.5);
+                        
+                        runner.assertTrue(game.musicBuffer.length >= 1, 'Should have at least root note');
+                        
+                        // Check that chord notes are present
+                        const notes = game.musicBuffer.map(n => n.note);
+                        runner.assertTrue(notes.includes('C4'), 'Should include root note C4');
+                        
+                        // Restore original function
+                        game.playSine = originalPlaySound;
+                    });
+                    
+                    runner.test('Should record chord notes with same timestamp', () => {
+                        game.musicBuffer = [];
+                        game.selectedMode = 'chord';
+                        
+                        // Mock sound functions
+                        const mocks = ['playSine', 'playPiano', 'playSupersaw', 'playPad', 'playBrass', 'playFlute'];
+                        const originals = {};
+                        mocks.forEach(fn => {
+                            originals[fn] = game[fn];
+                            game[fn] = () => {};
+                        });
+                        
+                        game.playChord('C4', 0.5);
+                        
+                        if (game.musicBuffer.length > 1) {
+                            const firstTime = game.musicBuffer[0].timestamp;
+                            for (let i = 1; i < game.musicBuffer.length; i++) {
+                                runner.assertEqual(game.musicBuffer[i].timestamp, firstTime, 
+                                    'All chord notes should have same timestamp');
+                            }
+                        }
+                        
+                        // Restore
+                        mocks.forEach(fn => game[fn] = originals[fn]);
+                    });
+                });
+                
+                // Test Suite: Arpeggio Recording
+                runner.suite('Arpeggio Recording', () => {
+                    
+                    runner.test('Should record arpeggio notes with time offsets', (done) => {
+                        game.musicBuffer = [];
+                        game.arpEnabled = true;
+                        
+                        // Mock sound functions
+                        const mocks = ['playSine', 'playPiano', 'playSupersaw', 'playPad', 'playBrass', 'playFlute'];
+                        const originals = {};
+                        mocks.forEach(fn => {
+                            originals[fn] = game[fn];
+                            game[fn] = () => {};
+                        });
+                        
+                        const startBufferLength = game.musicBuffer.length;
+                        game.playArpeggio('C4', 0.5);
+                        
+                        // Wait for arpeggio to complete
+                        setTimeout(() => {
+                            runner.assertTrue(game.musicBuffer.length > startBufferLength, 
+                                'Should have recorded arpeggio notes');
+                            
+                            // Check that timestamps are different (60ms apart)
+                            if (game.musicBuffer.length >= 2) {
+                                const timeDiff = game.musicBuffer[1].timestamp - game.musicBuffer[0].timestamp;
+                                runner.assertInRange(timeDiff, 50, 70, 'Arpeggio notes should be ~60ms apart');
+                            }
+                            
+                            // Restore
+                            mocks.forEach(fn => game[fn] = originals[fn]);
+                        }, 300);
+                    });
+                });
+                
+                // Test Suite: MIDI Conversion
+                runner.suite('MIDI Conversion', () => {
+                    
+                    runner.test('Should convert note names to MIDI numbers', () => {
+                        runner.assertEqual(game.noteNameToMIDI('C4'), 60, 'C4 should be MIDI 60');
+                        runner.assertEqual(game.noteNameToMIDI('A4'), 69, 'A4 should be MIDI 69');
+                        runner.assertEqual(game.noteNameToMIDI('C#4'), 61, 'C#4 should be MIDI 61');
+                        runner.assertEqual(game.noteNameToMIDI('C5'), 72, 'C5 should be MIDI 72');
+                        runner.assertEqual(game.noteNameToMIDI('C3'), 48, 'C3 should be MIDI 48');
+                    });
+                    
+                    runner.test('Should convert MIDI numbers to note names', () => {
+                        runner.assertEqual(game.midiToNoteName(60), 'C4', 'MIDI 60 should be C4');
+                        runner.assertEqual(game.midiToNoteName(69), 'A4', 'MIDI 69 should be A4');
+                        runner.assertEqual(game.midiToNoteName(61), 'C#4', 'MIDI 61 should be C#4');
+                        runner.assertEqual(game.midiToNoteName(72), 'C5', 'MIDI 72 should be C5');
+                        runner.assertEqual(game.midiToNoteName(48), 'C3', 'MIDI 48 should be C3');
+                    });
+                    
+                    runner.test('Should handle invalid note names', () => {
+                        runner.assertEqual(game.noteNameToMIDI('Invalid'), null, 'Invalid note should return null');
+                        runner.assertEqual(game.noteNameToMIDI(''), null, 'Empty string should return null');
+                        runner.assertEqual(game.noteNameToMIDI('H4'), null, 'H4 should return null');
+                    });
+                });
+                
+                // Test Suite: Volume Levels
+                runner.suite('Volume Levels', () => {
+                    
+                    runner.test('Should have 4 volume levels', () => {
+                        runner.assertEqual(game.volumeLevels.length, 4, 'Should have 4 volume levels');
+                        runner.assertArrayEqual(game.volumeLevels, [0.25, 0.5, 0.75, 1.0], 
+                            'Volume levels should be 25%, 50%, 75%, 100%');
+                    });
+                    
+                    runner.test('Should select random volume from levels', () => {
+                        const volumes = [];
+                        for (let i = 0; i < 20; i++) {
+                            const vol = game.volumeLevels[Math.floor(Math.random() * game.volumeLevels.length)];
+                            volumes.push(vol);
+                        }
+                        
+                        // Check that we get different volumes
+                        const uniqueVolumes = [...new Set(volumes)];
+                        runner.assertTrue(uniqueVolumes.length > 1, 'Should get different volume levels');
+                        
+                        // Check all volumes are valid
+                        volumes.forEach(v => {
+                            runner.assertTrue(game.volumeLevels.includes(v), 
+                                `Volume ${v} should be in volumeLevels`);
+                        });
+                    });
+                });
+                
+                // Test Suite: MIDI File Creation
+                runner.suite('MIDI File Creation', () => {
+                    
+                    runner.test('Should create MIDI file with notes', () => {
+                        game.musicBuffer = [
+                            { note: 'C4', time: 0, timestamp: 0, velocity: 64 },
+                            { note: 'E4', time: 0.5, timestamp: 500, velocity: 80 },
+                            { note: 'G4', time: 1.0, timestamp: 1000, velocity: 96 }
+                        ];
+                        
+                        const midiData = game.createMIDIFile();
+                        runner.assertTrue(midiData instanceof Uint8Array, 'Should return Uint8Array');
+                        runner.assertTrue(midiData.length > 0, 'MIDI data should not be empty');
+                        
+                        // Check MIDI header
+                        const header = Array.from(midiData.slice(0, 4));
+                        runner.assertArrayEqual(header, [0x4D, 0x54, 0x68, 0x64], 
+                            'Should have MThd header');
+                    });
+                    
+                    runner.test('Should preserve velocity in MIDI export', () => {
+                        game.musicBuffer = [
+                            { note: 'C4', time: 0, timestamp: 0, velocity: 32 },
+                            { note: 'D4', time: 0.25, timestamp: 250, velocity: 64 },
+                            { note: 'E4', time: 0.5, timestamp: 500, velocity: 96 },
+                            { note: 'F4', time: 0.75, timestamp: 750, velocity: 127 }
+                        ];
+                        
+                        const midiData = game.createMIDIFile();
+                        
+                        // The MIDI data should contain our velocity values
+                        // Note: This is a basic check - full MIDI parsing would be complex
+                        const dataArray = Array.from(midiData);
+                        runner.assertTrue(dataArray.includes(32), 'Should include velocity 32');
+                        runner.assertTrue(dataArray.includes(64), 'Should include velocity 64');
+                        runner.assertTrue(dataArray.includes(96), 'Should include velocity 96');
+                        runner.assertTrue(dataArray.includes(127), 'Should include velocity 127');
+                    });
+                });
+                
+                // Show summary
+                setTimeout(() => {
+                    runner.showSummary();
+                }, 500);
+                
+            }, 100);
+        });
+    </script>
+</body>
+</html>
