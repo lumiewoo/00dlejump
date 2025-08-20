@@ -7,6 +7,10 @@
     }
   ],
   "routes": [
+    { "src": "/js/(.*)", "dest": "/js/$1" },
+    { "src": "/css/(.*)", "dest": "/css/$1" },
+    { "src": "/img/(.*)", "dest": "/img/$1" },
+    { "src": "/(.*\\.(ico|png|svg|webmanifest|txt))", "dest": "/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
