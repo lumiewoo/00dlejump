@@ -1101,6 +1101,8 @@ class MusicalDoodleJump {
         
         // Draw pause indicator if paused
         if (this.isPaused) {
+            this.ctx.save();
+            
             // Semi-transparent overlay
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -1116,6 +1118,8 @@ class MusicalDoodleJump {
             this.ctx.font = '20px Arial';
             const instructionText = this.isMobile ? 'Tap to resume' : 'Press SPACE to resume';
             this.ctx.fillText(instructionText, this.canvas.width / 2, this.canvas.height / 2 + 60);
+            
+            this.ctx.restore();
         }
     }
     
