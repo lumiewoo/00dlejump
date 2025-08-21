@@ -39,12 +39,9 @@ class MusicalDoodleJump {
         this.isPaused = false;
         
         // Initialize AudioContext - will be resumed on first user interaction
-        try {
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        } catch (e) {
-            console.warn('Web Audio API not supported:', e);
-            this.audioContext = null;
-        }
+        this.audioContext = null;
+        this.audioInitialized = false;
+        this.audioDebugInfo = [];
         this.musicBuffer = [];
         this.gameStartTime = performance.now();
         
@@ -256,6 +253,97 @@ class MusicalDoodleJump {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     }
     
+    initializeAudio() {
+        if (this.audioInitialized && this.audioContext) {
+            // Already initialized, just try to resume if needed
+            if (this.audioContext.state === 'suspended') {
+                this.audioContext.resume().then(() => {
+                    this.logAudioDebug('AudioContext resumed');
+                }).catch(err => {
+                    this.logAudioDebug('Failed to resume: ' + err.message);
+                });
+            }
+            return;
+        }
+        
+        try {
+            // Create AudioContext on user interaction
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) {
+                this.logAudioDebug('No AudioContext available');
+                return;
+            }
+            
+            this.audioContext = new AudioContextClass();
+            this.audioInitialized = true;
+            this.logAudioDebug('AudioContext created, state: ' + this.audioContext.state);
+            
+            // For iOS Safari - create and start a silent buffer to unlock audio
+            if (this.isMobile) {
+                const buffer = this.audioContext.createBuffer(1, 1, 22050);
+                const source = this.audioContext.createBufferSource();
+                source.buffer = buffer;
+                source.connect(this.audioContext.destination);
+                source.start(0);
+                this.logAudioDebug('iOS audio unlock attempted');
+            }
+            
+            // Immediately try to resume if it's suspended
+            if (this.audioContext.state === 'suspended') {
+                this.audioContext.resume().then(() => {
+                    this.logAudioDebug('AudioContext resumed after creation');
+                    // Test sound after resume
+                    setTimeout(() => this.playTestSound(), 100);
+                }).catch(err => {
+                    this.logAudioDebug('Failed to resume after creation: ' + err.message);
+                });
+            } else {
+                // Test sound immediately if not suspended
+                this.playTestSound();
+            }
+        } catch (e) {
+            this.logAudioDebug('Failed to create AudioContext: ' + e.message);
+            console.error('Audio initialization failed:', e);
+        }
+    }
+    
+    logAudioDebug(message) {
+        const timestamp = new Date().toISOString();
+        const logMessage = `[${timestamp}] ${message}`;
+        this.audioDebugInfo.push(logMessage);
+        console.log('Audio Debug:', logMessage);
+        
+        // Display debug info on screen (limit to last 5 messages)
+        if (this.audioDebugInfo.length > 5) {
+            this.audioDebugInfo.shift();
+        }
+    }
+    
+    playTestSound() {
+        if (!this.audioContext) {
+            this.logAudioDebug('No AudioContext for test sound');
+            return;
+        }
+        
+        try {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            
+            osc.frequency.value = 440;
+            gain.gain.value = 0.1;
+            
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+            
+            osc.start();
+            osc.stop(this.audioContext.currentTime + 0.1);
+            
+            this.logAudioDebug('Test sound played successfully');
+        } catch (e) {
+            this.logAudioDebug('Test sound failed: ' + e.message);
+        }
+    }
+    
     setupMobileUI() {
         if (this.isMobile) {
             document.querySelector('.desktop-controls').style.display = 'none';
@@ -342,14 +430,8 @@ class MusicalDoodleJump {
         window.addEventListener('keydown', (e) => {
             this.keys[e.code] = true;
             
-            // Resume AudioContext on first keypress (required for Chrome autoplay policy)
-            if (this.audioContext && this.audioContext.state === 'suspended') {
-                this.audioContext.resume().then(() => {
-                    console.log('AudioContext resumed successfully');
-                }).catch(err => {
-                    console.warn('Failed to resume AudioContext:', err);
-                });
-            }
+            // Initialize or resume AudioContext on first keypress (required for Chrome autoplay policy)
+            this.initializeAudio();
             
             if (e.code === 'Space') {
                 e.preventDefault();
@@ -388,14 +470,8 @@ class MusicalDoodleJump {
         this.canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             
-            // Resume AudioContext on first touch (required for mobile Chrome)
-            if (this.audioContext && this.audioContext.state === 'suspended') {
-                this.audioContext.resume().then(() => {
-                    console.log('AudioContext resumed successfully');
-                }).catch(err => {
-                    console.warn('Failed to resume AudioContext:', err);
-                });
-            }
+            // Initialize or resume AudioContext on first touch (required for mobile Chrome)
+            this.initializeAudio();
             
             const touch = e.touches[0];
             this.touchStartX = touch.clientX;
@@ -512,6 +588,16 @@ class MusicalDoodleJump {
     }
     
     playNote(note) {
+        // Debug logging for mobile
+        if (this.isMobile) {
+            this.logAudioDebug(`Playing note: ${note}`);
+            if (!this.audioContext) {
+                this.logAudioDebug('No AudioContext!');
+                return;
+            }
+            this.logAudioDebug(`AudioContext state: ${this.audioContext.state}`);
+        }
+        
         const volumeMultiplier = this.volumeLevels[Math.floor(Math.random() * this.volumeLevels.length)];
         
         // Check if we should play arp based on chance
@@ -1098,6 +1184,20 @@ class MusicalDoodleJump {
         this.ctx.textAlign = 'left';
         this.ctx.fillText(`Height: ${Math.max(0, Math.floor((500 - this.player.y) / 10))}m`, 10, 30);
         this.ctx.fillText(`Buffer: ${this.musicBuffer.length} notes`, 10, 50);
+        
+        // Display audio debug info on mobile
+        if (this.isMobile && this.audioDebugInfo.length > 0) {
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            this.ctx.fillRect(10, 70, 350, 20 * this.audioDebugInfo.length + 10);
+            
+            this.ctx.fillStyle = '#000';
+            this.ctx.font = '12px monospace';
+            this.audioDebugInfo.forEach((msg, index) => {
+                // Truncate message for display
+                const displayMsg = msg.length > 45 ? msg.substring(0, 45) + '...' : msg;
+                this.ctx.fillText(displayMsg, 15, 85 + index * 20);
+            });
+        }
         
         // Draw pause indicator if paused
         if (this.isPaused) {
