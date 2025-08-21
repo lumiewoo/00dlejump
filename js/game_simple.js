@@ -75,6 +75,17 @@ class MusicalDoodleJump {
         this.touchHeld = false;
         this.touchDirection = 0; // -1 for left, 1 for right, 0 for none
         
+        // Analog stick state
+        this.analogStick = {
+            active: false,
+            startX: 0,
+            startY: 0,
+            currentX: 0,
+            currentY: 0,
+            deltaX: 0,
+            deltaY: 0
+        };
+        
         // Platform density tracking
         this.platformDensity = 0; // Current platform density percentage (display value)
         this.platformDensityTarget = 20; // Target density controlled by slider (10-80%)
@@ -407,8 +418,129 @@ class MusicalDoodleJump {
             controls.style.fontSize = '10px';
             controls.classList.add('mobile-hidden');
             
+            // Show mobile gamepad overlay
+            document.getElementById('mobileGamepad').style.display = 'block';
+            
+            // Setup mobile gamepad controls
+            this.setupMobileGamepad();
+            
             // Setup hamburger menu toggle
             this.setupHamburgerMenu();
+        }
+    }
+    
+    setupMobileGamepad() {
+        const analogStick = document.getElementById('analogStick');
+        const analogStickKnob = document.getElementById('analogStickKnob');
+        const buttonA = document.getElementById('buttonA');
+        const buttonB = document.getElementById('buttonB');
+        const saveButton = document.getElementById('saveButton');
+        
+        // Analog stick touch handling
+        analogStick.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.initializeAudio();
+            
+            const touch = e.touches[0];
+            const rect = analogStick.getBoundingClientRect();
+            this.analogStick.startX = rect.left + rect.width / 2;
+            this.analogStick.startY = rect.top + rect.height / 2;
+            this.analogStick.active = true;
+            
+            this.updateAnalogStick(touch.clientX, touch.clientY);
+        });
+        
+        analogStick.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (this.analogStick.active) {
+                const touch = e.touches[0];
+                this.updateAnalogStick(touch.clientX, touch.clientY);
+            }
+        });
+        
+        analogStick.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            this.analogStick.active = false;
+            this.analogStick.deltaX = 0;
+            this.analogStick.deltaY = 0;
+            this.touchDirection = 0;
+            this.player.vx = 0;
+            this.player.isMoving = false;
+            this.fallingThrough = false;
+            
+            // Reset knob position
+            analogStickKnob.style.transform = 'translate(-50%, -50%)';
+        });
+        
+        // A Button (Jump)
+        buttonA.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.initializeAudio();
+            const maxJumpHeight = Math.min(...this.jumpHeights);
+            this.player.vy = maxJumpHeight * 1.2;
+        });
+        
+        // B Button (Fall Through)
+        buttonB.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.fallingThrough = true;
+        });
+        
+        buttonB.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            this.fallingThrough = false;
+        });
+        
+        // Save Button (Export MIDI)
+        saveButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.exportMIDI();
+        });
+    }
+    
+    updateAnalogStick(touchX, touchY) {
+        const maxDistance = 40; // Half the base radius
+        
+        // Calculate distance from center
+        let deltaX = touchX - this.analogStick.startX;
+        let deltaY = touchY - this.analogStick.startY;
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        
+        // Limit to max distance
+        if (distance > maxDistance) {
+            deltaX = (deltaX / distance) * maxDistance;
+            deltaY = (deltaY / distance) * maxDistance;
+        }
+        
+        this.analogStick.deltaX = deltaX / maxDistance; // Normalize to -1 to 1
+        this.analogStick.deltaY = deltaY / maxDistance; // Normalize to -1 to 1
+        
+        // Update knob position
+        const knob = document.getElementById('analogStickKnob');
+        knob.style.transform = `translate(${-50 + (deltaX)}%, ${-50 + (deltaY)}%)`;
+        
+        // Handle movement
+        const deadzone = 0.2;
+        if (Math.abs(this.analogStick.deltaX) > deadzone) {
+            this.touchDirection = this.analogStick.deltaX > 0 ? 1 : -1;
+            this.player.vx = this.analogStick.deltaX * this.moveSpeed;
+            this.player.isMoving = true;
+        } else {
+            this.touchDirection = 0;
+            this.player.vx = 0;
+            this.player.isMoving = false;
+        }
+        
+        // Handle vertical movement (jump/fall through)
+        if (this.analogStick.deltaY < -deadzone) {
+            // Up = Jump
+            const maxJumpHeight = Math.min(...this.jumpHeights);
+            this.player.vy = maxJumpHeight * 1.2;
+        } else if (this.analogStick.deltaY > deadzone) {
+            // Down = Fall through platforms
+            this.fallingThrough = true;
+        } else {
+            this.fallingThrough = false;
         }
     }
     
@@ -518,56 +650,27 @@ class MusicalDoodleJump {
             }
         });
         
-        // Mobile touch controls
-        this.canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            
-            // Initialize or resume AudioContext on first touch (required for mobile Chrome)
-            this.initializeAudio();
-            
-            const touch = e.touches[0];
-            this.touchStartX = touch.clientX;
-            this.touchStartY = touch.clientY;
-            
-            // Determine movement based on screen half
-            const screenMidpoint = this.canvas.width / 2;
-            this.touchHeld = true;
-            if (touch.clientX < screenMidpoint) {
-                // Left half - move left
-                this.touchDirection = -1;
-            } else {
-                // Right half - move right
-                this.touchDirection = 1;
-            }
-            
-            // Handle tap/double tap for pause/export
-            const currentTime = Date.now();
-            if (currentTime - this.lastTapTime < 300) {
-                this.tapCount++;
-                if (this.tapCount === 2) {
-                    // Double tap - export MIDI
-                    this.exportMIDI();
-                    this.tapCount = 0;
+        // Mobile touch controls (only for non-gamepad areas)
+        if (this.isMobile) {
+            this.canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.initializeAudio();
+                
+                // Handle tap for pause (single tap on canvas, not on gamepad controls)
+                const currentTime = Date.now();
+                if (currentTime - this.lastTapTime < 300) {
+                    this.tapCount++;
+                    if (this.tapCount === 2) {
+                        // Double tap - toggle pause
+                        this.togglePause();
+                        this.tapCount = 0;
+                    }
+                } else {
+                    this.tapCount = 1;
                 }
-            } else {
-                this.tapCount = 1;
-            }
-            this.lastTapTime = currentTime;
-        });
-        
-        this.canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            // Keep movement consistent with touchstart - no change needed for new control scheme
-        });
-        
-        this.canvas.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            // Stop movement when touch ends
-            this.touchHeld = false;
-            this.touchDirection = 0;
-            this.player.vx = 0;
-            this.player.isMoving = false;
-        });
+                this.lastTapTime = currentTime;
+            });
+        }
         
         // Prevent context menu on long press
         this.canvas.addEventListener('contextmenu', (e) => {
@@ -1034,10 +1137,9 @@ class MusicalDoodleJump {
             this.player.vx *= 0.8;
         }
         
-        // Handle mobile touch controls
-        if (this.touchHeld && this.touchDirection !== 0) {
-            this.player.vx = this.touchDirection * this.moveSpeed;
-            this.player.isMoving = true;
+        // Handle mobile analog stick controls
+        if (this.isMobile && this.analogStick.active) {
+            // Movement is handled in updateAnalogStick
         }
         
         // Check if player is moving for animation
@@ -1268,20 +1370,6 @@ class MusicalDoodleJump {
         this.ctx.textAlign = 'left';
         this.ctx.fillText(`Height: ${Math.max(0, Math.floor((500 - this.player.y) / 10))}m`, 10, 30);
         this.ctx.fillText(`Buffer: ${this.musicBuffer.length} notes`, 10, 50);
-        
-        // Display audio debug info on mobile
-        if (this.isMobile && this.audioDebugInfo.length > 0) {
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            this.ctx.fillRect(10, 70, 350, 20 * this.audioDebugInfo.length + 10);
-            
-            this.ctx.fillStyle = '#000';
-            this.ctx.font = '12px monospace';
-            this.audioDebugInfo.forEach((msg, index) => {
-                // Truncate message for display
-                const displayMsg = msg.length > 45 ? msg.substring(0, 45) + '...' : msg;
-                this.ctx.fillText(displayMsg, 15, 85 + index * 20);
-            });
-        }
         
         // Draw pause indicator if paused
         if (this.isPaused) {

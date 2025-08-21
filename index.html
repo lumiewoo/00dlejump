@@ -172,6 +172,137 @@
                 max-width: 200px;
             }
         }
+        
+        /* Mobile Gamepad Styles */
+        #mobileGamepad {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 500;
+        }
+        
+        /* Analog Stick (Left Side) */
+        #analogStick {
+            position: absolute;
+            bottom: 50px;
+            left: 50px;
+            width: 120px;
+            height: 120px;
+            pointer-events: all;
+        }
+        
+        #analogStickBase {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            border: 3px solid rgba(255, 255, 255, 0.6);
+            position: absolute;
+        }
+        
+        #analogStickKnob {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid rgba(0, 0, 0, 0.3);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.1s ease;
+        }
+        
+        /* Buttons (Right Side) */
+        #gamepadButtons {
+            position: absolute;
+            bottom: 50px;
+            right: 50px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            pointer-events: all;
+        }
+        
+        #saveButton {
+            width: 80px;
+            height: 40px;
+            background: rgba(76, 175, 80, 0.8);
+            color: white;
+            border: 2px solid rgba(76, 175, 80, 1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            user-select: none;
+            cursor: pointer;
+        }
+        
+        #saveButton:active {
+            background: rgba(76, 175, 80, 1);
+            transform: scale(0.95);
+        }
+        
+        #actionButtons {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .gamepad-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.8);
+            border: 3px solid rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: #333;
+            user-select: none;
+            cursor: pointer;
+            transition: all 0.1s ease;
+        }
+        
+        #buttonA, #buttonB {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.8);
+            border: 3px solid rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: #333;
+            user-select: none;
+            cursor: pointer;
+            transition: all 0.1s ease;
+        }
+        
+        #buttonA:active, #buttonB:active {
+            background: rgba(255, 255, 255, 1);
+            transform: scale(0.9);
+        }
+        
+        #buttonA {
+            background: rgba(255, 193, 7, 0.8);
+            border-color: rgba(255, 193, 7, 1);
+        }
+        
+        #buttonB {
+            background: rgba(244, 67, 54, 0.8);
+            border-color: rgba(244, 67, 54, 1);
+        }
     </style>
 </head>
 <body>
@@ -186,9 +317,9 @@
             <span class="desktop-controls">← → to move | ↑ max jump | ↓ fall through<br>
             Spacebar to pause<br>
             Enter to export entire session as MIDI</span>
-            <span class="mobile-controls" style="display: none;">Hold left/right side to move<br>
-            Tap menu to configure<br>
-            Double tap to export MIDI</span>
+            <span class="mobile-controls" style="display: none;">Use analog stick to move/jump/fall<br>
+            A = Jump, B = Fall Through<br>
+            Save = Export MIDI, Double tap = Pause</span>
         </div>
         <div id="hamburgerMenu" style="display: none;">
             <div id="hamburgerIcon">☰</div>
@@ -289,6 +420,24 @@
         </div>
         <div id="status">Status: Playing</div>
         <canvas id="gameCanvas"></canvas>
+        
+        <!-- Mobile Gamepad Overlay -->
+        <div id="mobileGamepad" style="display: none;">
+            <!-- Analog Stick (Left Side) -->
+            <div id="analogStick">
+                <div id="analogStickBase"></div>
+                <div id="analogStickKnob"></div>
+            </div>
+            
+            <!-- Buttons (Right Side) -->
+            <div id="gamepadButtons">
+                <div id="saveButton">Save</div>
+                <div id="actionButtons">
+                    <div id="buttonA">A</div>
+                    <div id="buttonB">B</div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <script src="js/game_simple.js"></script>
