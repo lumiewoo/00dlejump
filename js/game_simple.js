@@ -1389,11 +1389,12 @@ class MusicalDoodleJump {
         const horizontalSpacing = 120;
         const verticalSpacing = 40;
         
-        // Calculate viewport bounds in world coordinates (reduced for better density control)
-        const viewportLeft = this.cameraX - this.canvas.width * 0.75;
-        const viewportRight = this.cameraX + this.canvas.width * 1.25;
-        const viewportTop = -500;
-        const viewportBottom = this.canvas.height + 500;
+        // Much smaller generation bounds to prevent massive areas
+        const generationDistance = this.canvas.width * 0.8;
+        const viewportLeft = this.cameraX - generationDistance;
+        const viewportRight = this.cameraX + generationDistance;
+        const viewportTop = Math.min(-300, this.player.y - 300);
+        const viewportBottom = Math.max(this.canvas.height + 300, this.player.y + 500);
         
         // Find existing platform bounds
         const existingPlatforms = this.platforms;
@@ -1402,38 +1403,48 @@ class MusicalDoodleJump {
         const highestPlatform = existingPlatforms.length > 0 ? Math.min(...existingPlatforms.map(p => p.y)) : 0;
         const lowestPlatform = existingPlatforms.length > 0 ? Math.max(...existingPlatforms.map(p => p.y)) : this.canvas.height;
         
-        // Generate platforms to the left if needed
+        // Generate smaller incremental areas to prevent massive generation
+        const maxGenerationWidth = this.canvas.width * 0.5;
+        const maxGenerationHeight = this.canvas.height * 0.5;
+        
+        // Generate platforms to the left if needed (limited area)
         if (leftmostPlatform > viewportLeft) {
+            const leftBound = Math.max(viewportLeft, leftmostPlatform - maxGenerationWidth);
             this.generatePlatformsInRegion(
-                viewportLeft, leftmostPlatform,
-                viewportTop, viewportBottom,
+                leftBound, leftmostPlatform,
+                Math.max(viewportTop, this.player.y - maxGenerationHeight),
+                Math.min(viewportBottom, this.player.y + maxGenerationHeight),
                 horizontalSpacing, verticalSpacing
             );
         }
         
-        // Generate platforms to the right if needed
+        // Generate platforms to the right if needed (limited area)
         if (rightmostPlatform < viewportRight) {
+            const rightBound = Math.min(viewportRight, rightmostPlatform + maxGenerationWidth);
             this.generatePlatformsInRegion(
-                rightmostPlatform, viewportRight,
-                viewportTop, viewportBottom,
+                rightmostPlatform, rightBound,
+                Math.max(viewportTop, this.player.y - maxGenerationHeight),
+                Math.min(viewportBottom, this.player.y + maxGenerationHeight),
                 horizontalSpacing, verticalSpacing
             );
         }
         
-        // Generate platforms above if needed
+        // Generate platforms above if needed (current viewport width only)
         if (highestPlatform > viewportTop) {
+            const topBound = Math.max(viewportTop, highestPlatform - maxGenerationHeight);
             this.generatePlatformsInRegion(
-                viewportLeft, viewportRight,
-                viewportTop, highestPlatform,
+                this.cameraX - generationDistance * 0.5, this.cameraX + generationDistance * 0.5,
+                topBound, highestPlatform,
                 horizontalSpacing, verticalSpacing
             );
         }
         
-        // Generate platforms below if needed
+        // Generate platforms below if needed (current viewport width only)
         if (lowestPlatform < viewportBottom) {
+            const bottomBound = Math.min(viewportBottom, lowestPlatform + maxGenerationHeight);
             this.generatePlatformsInRegion(
-                viewportLeft, viewportRight,
-                lowestPlatform, viewportBottom,
+                this.cameraX - generationDistance * 0.5, this.cameraX + generationDistance * 0.5,
+                lowestPlatform, bottomBound,
                 horizontalSpacing, verticalSpacing
             );
         }
