@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>00dlejump</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎵</text></svg>">
     <style>
@@ -14,12 +14,23 @@
             overflow: hidden;
             touch-action: none; /* Prevent scrolling on mobile */
             user-select: none; /* Prevent text selection */
+            /* Fix mobile viewport height issues */
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height for modern browsers */
+            width: 100vw;
+            position: fixed;
+            top: 0;
+            left: 0;
         }
         
         #gameContainer {
             position: relative;
             width: 100vw;
             height: 100vh;
+            height: 100dvh; /* Dynamic viewport height for modern browsers */
+            /* Support for devices with notches */
+            padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+            box-sizing: border-box;
         }
         
         #gameCanvas {

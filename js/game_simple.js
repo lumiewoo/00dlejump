@@ -4,12 +4,16 @@ class MusicalDoodleJump {
         this.ctx = this.canvas.getContext('2d');
         this.statusElement = document.getElementById('status');
         
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
+        // Set canvas to full viewport size
+        this.setCanvasSize();
         
         window.addEventListener('resize', () => {
-            this.canvas.width = window.innerWidth;
-            this.canvas.height = window.innerHeight;
+            this.setCanvasSize();
+        });
+        
+        // Handle mobile orientation changes and browser UI changes
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => this.setCanvasSize(), 100);
         });
         
         this.player = {
@@ -112,6 +116,19 @@ class MusicalDoodleJump {
         this.bindEvents();
         this.setupMobileUI();
         this.gameLoop();
+    }
+    
+    setCanvasSize() {
+        // Get the true viewport size, accounting for mobile browser UI
+        const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+        const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+        
+        this.canvas.width = vw;
+        this.canvas.height = vh;
+        
+        // Force the canvas to take up the full space
+        this.canvas.style.width = vw + 'px';
+        this.canvas.style.height = vh + 'px';
     }
     
     updateNotesForScale() {
