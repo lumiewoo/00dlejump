@@ -780,6 +780,20 @@ class MusicalDoodleJump {
     }
     
     playNote(note) {
+        // Ensure audio is initialized and resumed
+        if (!this.audioContext) {
+            this.initializeAudio();
+        }
+        
+        // Force resume audio context if suspended (especially important on mobile)
+        if (this.audioContext && this.audioContext.state === 'suspended') {
+            this.audioContext.resume().then(() => {
+                this.logAudioDebug('AudioContext resumed for playNote');
+            }).catch(err => {
+                this.logAudioDebug('Failed to resume AudioContext: ' + err.message);
+            });
+        }
+        
         // Debug logging for mobile
         if (this.isMobile) {
             this.logAudioDebug(`Playing note: ${note}`);
@@ -1406,14 +1420,15 @@ class MusicalDoodleJump {
         
         for (let row = startRow; row < endRow; row++) {
             for (let col = startCol; col < endCol; col++) {
+                // Apply density check consistently - skip if random value exceeds target
                 if (Math.random() * 100 > this.platformDensityTarget) continue;
                 
                 const baseX = col * horizontalSpacing;
                 const baseY = row * verticalSpacing;
                 
-                // Skip if platform already exists at this position
+                // Skip if platform already exists at this position (more precise check)
                 const existingPlatform = this.platforms.find(p => 
-                    Math.abs(p.x - baseX) < 60 && Math.abs(p.y - baseY) < 20
+                    Math.abs(p.x - baseX) < 80 && Math.abs(p.y - baseY) < 30
                 );
                 if (existingPlatform) continue;
                 
