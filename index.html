@@ -126,7 +126,8 @@
         
         @media (max-width: 768px) {
             #genderSelector {
-                right: 100px;
+                top: 60px;
+                right: 10px;
                 font-size: 12px;
             }
             #genderSelector button {
@@ -137,7 +138,7 @@
         
         #hamburgerMenu {
             position: absolute;
-            top: 10px;
+            top: 450px;
             left: 10px;
             z-index: 1000;
         }
@@ -187,7 +188,7 @@
         /* Analog Stick (Left Side) */
         #analogStick {
             position: absolute;
-            bottom: 80px;
+            bottom: 120px;
             left: 50px;
             width: 120px;
             height: 120px;
@@ -219,7 +220,7 @@
         /* Buttons (Right Side) */
         #gamepadButtons {
             position: absolute;
-            bottom: 80px;
+            bottom: 120px;
             right: 50px;
             display: flex;
             flex-direction: column;
@@ -229,7 +230,7 @@
         }
         
         #saveButton {
-            width: 80px;
+            width: 100px;
             height: 40px;
             background: rgba(76, 175, 80, 0.8);
             color: white;
@@ -239,7 +240,7 @@
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 12px;
             user-select: none;
             cursor: pointer;
         }
@@ -431,10 +432,10 @@
             
             <!-- Buttons (Right Side) -->
             <div id="gamepadButtons">
-                <div id="saveButton">Save</div>
+                <div id="saveButton">Save MIDI</div>
                 <div id="actionButtons">
-                    <div id="buttonA">A</div>
                     <div id="buttonB">B</div>
+                    <div id="buttonA">A</div>
                 </div>
             </div>
         </div>

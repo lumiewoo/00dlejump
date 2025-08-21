@@ -36,6 +36,7 @@ class MusicalDoodleJump {
         this.jumpHeights = [-6, -8, -10, -12];
         this.moveSpeed = 3;
         this.cameraY = 0;
+        this.cameraX = 0; // Horizontal camera offset for mobile side scrolling
         this.isPaused = false;
         
         // Initialize AudioContext - will be resumed on first user interaction
@@ -674,23 +675,23 @@ class MusicalDoodleJump {
                 // Define exclusion zones for controls
                 const analogStickZone = {
                     x: 50,
-                    y: canvasRect.height - 200, // 80px bottom + 120px stick height
+                    y: canvasRect.height - 240, // 120px bottom + 120px stick height
                     width: 120,
                     height: 120
                 };
                 
                 const buttonZone = {
                     x: canvasRect.width - 170, // 50px from right + 120px button area width
-                    y: canvasRect.height - 240, // 80px bottom + 160px button area height  
+                    y: canvasRect.height - 280, // 120px bottom + 160px button area height  
                     width: 120,
                     height: 160
                 };
                 
                 const menuZone = {
                     x: 10,
-                    y: 60,
+                    y: 450,
                     width: 250, // Wider area for menu
-                    height: 400 // Taller area for expanded menu
+                    height: 200 // Menu area below controls
                 };
                 
                 // Check if tap is outside control zones
@@ -703,9 +704,11 @@ class MusicalDoodleJump {
                 const isInMenu = (relativeX >= menuZone.x && relativeX <= menuZone.x + menuZone.width &&
                                  relativeY >= menuZone.y && relativeY <= menuZone.y + menuZone.height);
                 
-                // Only handle pause/unpause if tap is in free canvas area
-                if (!isInAnalogStick && !isInButtons && !isInMenu) {
-                    // Single tap to toggle pause
+                // If game is paused, allow tap anywhere to unpause
+                if (this.isPaused) {
+                    this.togglePause();
+                } else if (!isInAnalogStick && !isInButtons && !isInMenu) {
+                    // Only handle pause if tap is in free canvas area and game is not paused
                     this.togglePause();
                 }
             });
@@ -1189,9 +1192,13 @@ class MusicalDoodleJump {
         this.player.x += this.player.vx;
         this.player.y += this.player.vy;
         
-        if (this.player.x < 0) this.player.x = 0;
-        if (this.player.x + this.player.width > this.canvas.width) {
-            this.player.x = this.canvas.width - this.player.width;
+        // On mobile, allow player to move beyond screen bounds for side scrolling
+        // On desktop, keep original boundary behavior
+        if (!this.isMobile) {
+            if (this.player.x < 0) this.player.x = 0;
+            if (this.player.x + this.player.width > this.canvas.width) {
+                this.player.x = this.canvas.width - this.player.width;
+            }
         }
         
         // Collision with top of screen
@@ -1230,6 +1237,14 @@ class MusicalDoodleJump {
         
         this.generateMorePlatforms();
         this.calculatePlatformDensity();
+        
+        // Update camera position for mobile side scrolling
+        if (this.isMobile) {
+            // Keep avatar centered horizontally on mobile
+            const targetCameraX = this.player.x - this.canvas.width / 2;
+            // Smooth camera following with some easing
+            this.cameraX += (targetCameraX - this.cameraX) * 0.1;
+        }
         
         // Bounce when hitting bottom of screen
         if (this.player.y > this.canvas.height - this.player.height) {
@@ -1343,6 +1358,7 @@ class MusicalDoodleJump {
         this.player.vx = 0;
         this.player.vy = 0;
         this.cameraY = 0;
+        this.cameraX = 0;
         this.platforms = [];
         this.initializePlatforms();
         this.gameStartTime = performance.now();
@@ -1362,25 +1378,32 @@ class MusicalDoodleJump {
             this.emojis[this.gender].running : 
             this.emojis[this.gender].standing;
         
+        // Calculate player screen position with camera offset
+        const playerScreenX = this.player.x - this.cameraX;
+        
         // Flip emoji when moving right
         if (this.player.vx > 0.5) {
-            this.ctx.translate(this.player.x + this.player.width / 2, this.player.y + this.player.height / 2);
+            this.ctx.translate(playerScreenX + this.player.width / 2, this.player.y + this.player.height / 2);
             this.ctx.scale(-1, 1);
             this.ctx.fillText(emoji, 0, 0);
         } else {
-            this.ctx.fillText(emoji, this.player.x + this.player.width / 2, this.player.y + this.player.height / 2);
+            this.ctx.fillText(emoji, playerScreenX + this.player.width / 2, this.player.y + this.player.height / 2);
         }
         this.ctx.restore();
         
         for (let platform of this.platforms) {
-            // Skip rendering if platform is above top 10% of viewport or completely out of view
+            // Calculate platform position with camera offset
+            const platformScreenX = platform.x - this.cameraX;
+            
+            // Skip rendering if platform is outside the viewport
             const topBoundary = this.canvas.height * 0.1;
-            if (platform.y < topBoundary || platform.y > this.canvas.height) {
+            if (platform.y < topBoundary || platform.y > this.canvas.height ||
+                platformScreenX + platform.width < 0 || platformScreenX > this.canvas.width) {
                 continue;
             }
             
             this.ctx.fillStyle = platform.color || '#4caf50';
-            this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+            this.ctx.fillRect(platformScreenX, platform.y, platform.width, platform.height);
             
             // Check if this is the root note (first note in the scale)
             const isRootNote = platform.note.startsWith(this.selectedKey);
@@ -1389,18 +1412,18 @@ class MusicalDoodleJump {
                 // Thick black border for root note
                 this.ctx.strokeStyle = '#000';
                 this.ctx.lineWidth = 3;
-                this.ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+                this.ctx.strokeRect(platformScreenX, platform.y, platform.width, platform.height);
             } else {
                 // Normal border for other notes
                 this.ctx.strokeStyle = '#000';
                 this.ctx.lineWidth = 1;
-                this.ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+                this.ctx.strokeRect(platformScreenX, platform.y, platform.width, platform.height);
             }
             
             this.ctx.fillStyle = '#000';
             this.ctx.font = '14px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText(platform.note, platform.x + platform.width / 2, platform.y - 2);
+            this.ctx.fillText(platform.note, platformScreenX + platform.width / 2, platform.y - 2);
         }
         
         this.ctx.fillStyle = '#333';
@@ -1568,8 +1591,9 @@ class MusicalDoodleJump {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        const duration = Math.round(this.musicBuffer[this.musicBuffer.length - 1].time);
-        alert(`MIDI file exported with ${this.musicBuffer.length} notes over ${duration} seconds!`);
+        const duration = this.musicBuffer.length > 0 ? 
+            Math.round(this.musicBuffer[this.musicBuffer.length - 1].time) : 0;
+        alert(`MIDI file exported with ${this.musicBuffer.length} notes over ${duration} seconds!\nClip length: ${duration}s`);
     }
     
     gameLoop() {
