@@ -518,8 +518,8 @@ class MusicalDoodleJump {
             this.analogStick.jumpTriggered = false;
         }
         
-        // Handle fall through - require full down position (90% down)
-        if (this.analogStick.deltaY > 0.9) {
+        // Handle fall through - require full down position (95% down)
+        if (this.analogStick.deltaY > 0.95) {
             this.fallingThrough = true;
         } else {
             this.fallingThrough = false;
