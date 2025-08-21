@@ -457,6 +457,10 @@ class MusicalDoodleJump {
         analogStick.addEventListener('touchmove', (e) => {
             e.preventDefault();
             if (this.analogStick.active) {
+                // Ensure audio is initialized on first movement
+                if (!this.audioInitialized) {
+                    this.initializeAudio();
+                }
                 const touch = e.touches[0];
                 this.updateAnalogStick(touch.clientX, touch.clientY);
             }
@@ -674,14 +678,14 @@ class MusicalDoodleJump {
                 
                 // Define exclusion zones for controls
                 const analogStickZone = {
-                    x: 50,
+                    x: 20,
                     y: canvasRect.height - 240, // 120px bottom + 120px stick height
                     width: 120,
                     height: 120
                 };
                 
                 const buttonZone = {
-                    x: canvasRect.width - 170, // 50px from right + 120px button area width
+                    x: canvasRect.width - 140, // 20px from right + 120px button area width
                     y: canvasRect.height - 280, // 120px bottom + 160px button area height  
                     width: 120,
                     height: 160
@@ -689,9 +693,9 @@ class MusicalDoodleJump {
                 
                 const menuZone = {
                     x: 10,
-                    y: 450,
+                    y: 350,
                     width: 250, // Wider area for menu
-                    height: 200 // Menu area below controls
+                    height: 150 // Menu area below controls
                 };
                 
                 // Check if tap is outside control zones
