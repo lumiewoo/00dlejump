@@ -437,7 +437,6 @@ class MusicalDoodleJump {
         const analogStick = document.getElementById('analogStick');
         const analogStickKnob = document.getElementById('analogStickKnob');
         const buttonA = document.getElementById('buttonA');
-        const buttonB = document.getElementById('buttonB');
         const saveButton = document.getElementById('saveButton');
         
         // Analog stick touch handling
@@ -481,24 +480,16 @@ class MusicalDoodleJump {
             analogStickKnob.style.transform = 'translate(-50%, -50%)';
         });
         
-        // A Button (Jump)
+        // A Button (Jump) - works independently of analog stick
         buttonA.addEventListener('touchstart', (e) => {
             e.preventDefault();
             this.initializeAudio();
             const maxJumpHeight = Math.min(...this.jumpHeights);
             this.player.vy = maxJumpHeight * 1.2;
+            // Reset analog jump trigger so buttons can work alongside analog
+            this.analogStick.jumpTriggered = false;
         });
         
-        // B Button (Fall Through)
-        buttonB.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            this.fallingThrough = true;
-        });
-        
-        buttonB.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            this.fallingThrough = false;
-        });
         
         // Save Button (Export MIDI)
         saveButton.addEventListener('touchstart', (e) => {
@@ -539,8 +530,8 @@ class MusicalDoodleJump {
         }
         
         // Handle vertical movement (jump/fall through) - these are immediate actions
-        if (this.analogStick.deltaY < -deadzone) {
-            // Up = Jump (only trigger once per gesture)
+        if (this.analogStick.deltaY < -0.9) {
+            // Up = Superbounce (requires 100% analog up, only trigger once per gesture)
             if (!this.analogStick.jumpTriggered) {
                 const maxJumpHeight = Math.min(...this.jumpHeights);
                 this.player.vy = maxJumpHeight * 1.2;
@@ -693,9 +684,9 @@ class MusicalDoodleJump {
                 
                 const menuZone = {
                     x: 10,
-                    y: 350,
+                    y: 110,
                     width: 250, // Wider area for menu
-                    height: 150 // Menu area below controls
+                    height: 200 // Menu area including hamburger and controls
                 };
                 
                 // Check if tap is outside control zones
@@ -1171,19 +1162,29 @@ class MusicalDoodleJump {
         // Check if player is moving for emoji animation
         this.player.isMoving = false;
         
-        // Handle desktop controls
+        // Handle movement - allow both desktop and mobile inputs simultaneously
+        let hasMovementInput = false;
+        
+        // Desktop keyboard controls
         if (this.keys['ArrowLeft']) {
             this.player.vx = -this.moveSpeed;
             this.player.isMoving = true;
+            hasMovementInput = true;
         } else if (this.keys['ArrowRight']) {
             this.player.vx = this.moveSpeed;
             this.player.isMoving = true;
-        } else if (this.touchHeld && this.touchDirection !== 0) {
-            // Handle mobile analog stick continuous movement
+            hasMovementInput = true;
+        }
+        
+        // Mobile analog stick controls (can work alongside desktop)
+        if (this.touchHeld && this.touchDirection !== 0) {
             this.player.vx = this.touchDirection * this.moveSpeed;
             this.player.isMoving = true;
-        } else {
-            // Apply friction when no input
+            hasMovementInput = true;
+        }
+        
+        // Apply friction only when no input from either source
+        if (!hasMovementInput) {
             this.player.vx *= 0.8;
         }
         
