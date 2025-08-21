@@ -1390,7 +1390,7 @@ class MusicalDoodleJump {
         const verticalSpacing = 40;
         
         // Much smaller generation bounds to prevent massive areas
-        const generationDistance = this.canvas.width * 0.8;
+        const generationDistance = this.canvas.width * 0.6;  // Reduced from 0.8
         const viewportLeft = this.cameraX - generationDistance;
         const viewportRight = this.cameraX + generationDistance;
         const viewportTop = Math.min(-300, this.player.y - 300);
@@ -1404,16 +1404,17 @@ class MusicalDoodleJump {
         const lowestPlatform = existingPlatforms.length > 0 ? Math.max(...existingPlatforms.map(p => p.y)) : this.canvas.height;
         
         // Generate smaller incremental areas to prevent massive generation
-        const maxGenerationWidth = this.canvas.width * 0.5;
+        const maxGenerationWidth = 300;  // Much smaller fixed width for incremental generation
         const maxGenerationHeight = this.canvas.height * 0.5;
         
         // Generate platforms to the left if needed (limited area)
         if (leftmostPlatform > viewportLeft) {
             const leftBound = Math.max(viewportLeft, leftmostPlatform - maxGenerationWidth);
+            // Use full screen height for left generation too
             this.generatePlatformsInRegion(
                 leftBound, leftmostPlatform,
-                Math.max(viewportTop, this.player.y - maxGenerationHeight),
-                Math.min(viewportBottom, this.player.y + maxGenerationHeight),
+                -200,  // Fixed top bound
+                this.canvas.height + 200,  // Fixed bottom bound covering full screen
                 horizontalSpacing, verticalSpacing
             );
         }
@@ -1421,10 +1422,11 @@ class MusicalDoodleJump {
         // Generate platforms to the right if needed (limited area)
         if (rightmostPlatform < viewportRight) {
             const rightBound = Math.min(viewportRight, rightmostPlatform + maxGenerationWidth);
+            // Use full screen height for right generation, not player-relative
             this.generatePlatformsInRegion(
                 rightmostPlatform, rightBound,
-                Math.max(viewportTop, this.player.y - maxGenerationHeight),
-                Math.min(viewportBottom, this.player.y + maxGenerationHeight),
+                -200,  // Fixed top bound
+                this.canvas.height + 200,  // Fixed bottom bound covering full screen
                 horizontalSpacing, verticalSpacing
             );
         }
@@ -1450,10 +1452,10 @@ class MusicalDoodleJump {
         }
         
         // Remove platforms that are far from camera
-        const cleanupDistance = this.canvas.width * 3;
+        const cleanupDistance = this.canvas.width * 1.5;  // Reduced from 3 to cleanup more aggressively
         this.platforms = this.platforms.filter(p => 
             Math.abs(p.x - this.cameraX) < cleanupDistance &&
-            p.y > -1000 && p.y < this.canvas.height + 1000
+            p.y > -500 && p.y < this.canvas.height + 500
         );
     }
     
