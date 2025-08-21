@@ -83,7 +83,8 @@ class MusicalDoodleJump {
             currentX: 0,
             currentY: 0,
             deltaX: 0,
-            deltaY: 0
+            deltaY: 0,
+            jumpTriggered: false
         };
         
         // Platform density tracking
@@ -217,6 +218,8 @@ class MusicalDoodleJump {
             this.platformDensityTarget = parseInt(e.target.value);
             document.getElementById('platformDensityValue').textContent = this.platformDensityTarget + '%';
             this.regenerateAllPlatforms();
+            // Remove focus from slider to prevent keyboard interference
+            e.target.blur();
         });
     }
     
@@ -463,8 +466,9 @@ class MusicalDoodleJump {
             this.analogStick.active = false;
             this.analogStick.deltaX = 0;
             this.analogStick.deltaY = 0;
+            this.analogStick.jumpTriggered = false;
             this.touchDirection = 0;
-            this.player.vx = 0;
+            this.touchHeld = false;
             this.player.isMoving = false;
             this.fallingThrough = false;
             
@@ -519,25 +523,30 @@ class MusicalDoodleJump {
         const knob = document.getElementById('analogStickKnob');
         knob.style.transform = `translate(${-50 + (deltaX)}%, ${-50 + (deltaY)}%)`;
         
-        // Handle movement
+        // Store analog stick state for use in update loop
         const deadzone = 0.2;
         if (Math.abs(this.analogStick.deltaX) > deadzone) {
             this.touchDirection = this.analogStick.deltaX > 0 ? 1 : -1;
-            this.player.vx = this.analogStick.deltaX * this.moveSpeed;
-            this.player.isMoving = true;
+            this.touchHeld = true;
         } else {
             this.touchDirection = 0;
-            this.player.vx = 0;
-            this.player.isMoving = false;
+            this.touchHeld = false;
         }
         
-        // Handle vertical movement (jump/fall through)
+        // Handle vertical movement (jump/fall through) - these are immediate actions
         if (this.analogStick.deltaY < -deadzone) {
-            // Up = Jump
-            const maxJumpHeight = Math.min(...this.jumpHeights);
-            this.player.vy = maxJumpHeight * 1.2;
-        } else if (this.analogStick.deltaY > deadzone) {
-            // Down = Fall through platforms
+            // Up = Jump (only trigger once per gesture)
+            if (!this.analogStick.jumpTriggered) {
+                const maxJumpHeight = Math.min(...this.jumpHeights);
+                this.player.vy = maxJumpHeight * 1.2;
+                this.analogStick.jumpTriggered = true;
+            }
+        } else {
+            this.analogStick.jumpTriggered = false;
+        }
+        
+        // Handle fall through
+        if (this.analogStick.deltaY > deadzone) {
             this.fallingThrough = true;
         } else {
             this.fallingThrough = false;
@@ -650,25 +659,55 @@ class MusicalDoodleJump {
             }
         });
         
-        // Mobile touch controls (only for non-gamepad areas)
+        // Mobile touch controls for pause/unpause (only for canvas area)
         if (this.isMobile) {
             this.canvas.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 this.initializeAudio();
                 
-                // Handle tap for pause (single tap on canvas, not on gamepad controls)
-                const currentTime = Date.now();
-                if (currentTime - this.lastTapTime < 300) {
-                    this.tapCount++;
-                    if (this.tapCount === 2) {
-                        // Double tap - toggle pause
-                        this.togglePause();
-                        this.tapCount = 0;
-                    }
-                } else {
-                    this.tapCount = 1;
+                // Check if tap is in a control area
+                const touch = e.touches[0];
+                const canvasRect = this.canvas.getBoundingClientRect();
+                const relativeX = touch.clientX - canvasRect.left;
+                const relativeY = touch.clientY - canvasRect.top;
+                
+                // Define exclusion zones for controls
+                const analogStickZone = {
+                    x: 50,
+                    y: canvasRect.height - 200, // 80px bottom + 120px stick height
+                    width: 120,
+                    height: 120
+                };
+                
+                const buttonZone = {
+                    x: canvasRect.width - 170, // 50px from right + 120px button area width
+                    y: canvasRect.height - 240, // 80px bottom + 160px button area height  
+                    width: 120,
+                    height: 160
+                };
+                
+                const menuZone = {
+                    x: 10,
+                    y: 60,
+                    width: 250, // Wider area for menu
+                    height: 400 // Taller area for expanded menu
+                };
+                
+                // Check if tap is outside control zones
+                const isInAnalogStick = (relativeX >= analogStickZone.x && relativeX <= analogStickZone.x + analogStickZone.width &&
+                                       relativeY >= analogStickZone.y && relativeY <= analogStickZone.y + analogStickZone.height);
+                
+                const isInButtons = (relativeX >= buttonZone.x && relativeX <= buttonZone.x + buttonZone.width &&
+                                    relativeY >= buttonZone.y && relativeY <= buttonZone.y + buttonZone.height);
+                
+                const isInMenu = (relativeX >= menuZone.x && relativeX <= menuZone.x + menuZone.width &&
+                                 relativeY >= menuZone.y && relativeY <= menuZone.y + menuZone.height);
+                
+                // Only handle pause/unpause if tap is in free canvas area
+                if (!isInAnalogStick && !isInButtons && !isInMenu) {
+                    // Single tap to toggle pause
+                    this.togglePause();
                 }
-                this.lastTapTime = currentTime;
             });
         }
         
@@ -1132,14 +1171,13 @@ class MusicalDoodleJump {
         } else if (this.keys['ArrowRight']) {
             this.player.vx = this.moveSpeed;
             this.player.isMoving = true;
-        } else if (!this.touchHeld) {
-            // Only apply friction if not holding touch
+        } else if (this.touchHeld && this.touchDirection !== 0) {
+            // Handle mobile analog stick continuous movement
+            this.player.vx = this.touchDirection * this.moveSpeed;
+            this.player.isMoving = true;
+        } else {
+            // Apply friction when no input
             this.player.vx *= 0.8;
-        }
-        
-        // Handle mobile analog stick controls
-        if (this.isMobile && this.analogStick.active) {
-            // Movement is handled in updateAnalogStick
         }
         
         // Check if player is moving for animation
