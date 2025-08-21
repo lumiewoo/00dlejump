@@ -242,15 +242,25 @@ class MusicalDoodleJump {
     
     initializePlatforms() {
         this.platforms = [];
-        const platformsPerRow = Math.floor(this.canvas.width / 120);
         const verticalSpacing = 40;
-        const horizontalSpacing = this.canvas.width / platformsPerRow;
-        const rows = Math.ceil(this.canvas.height / verticalSpacing) + 10;
+        const horizontalSpacing = 120;
+        
+        // Generate a vast field of platforms
+        // Mobile: generate much wider area for side-scrolling
+        // Desktop: generate normal area
+        const horizontalRange = this.isMobile ? 50 : 20; // Number of columns to each side
+        const startCol = -horizontalRange;
+        const endCol = horizontalRange;
+        
+        // Vertical range - from way above to way below
+        const startRow = -30;
+        const endRow = Math.ceil(this.canvas.height / verticalSpacing) + 30;
         
         let lastNote = null;
         
-        for (let row = -5; row < rows; row++) {
-            for (let col = 0; col < platformsPerRow; col++) {
+        for (let row = startRow; row < endRow; row++) {
+            for (let col = startCol; col < endCol; col++) {
+                // Apply density setting consistently
                 if (Math.random() * 100 > this.platformDensityTarget) continue;
                 
                 const xOffset = (Math.random() - 0.5) * 30;
@@ -262,7 +272,7 @@ class MusicalDoodleJump {
                 } while (note === lastNote && this.notes.length > 1);
                 
                 this.platforms.push({
-                    x: col * horizontalSpacing + xOffset + 10,
+                    x: (this.canvas.width / 2) + (col * horizontalSpacing) + xOffset,
                     y: row * verticalSpacing + yOffset,
                     width: 60,
                     height: 10,
@@ -276,44 +286,8 @@ class MusicalDoodleJump {
     }
     
     regenerateAllPlatforms() {
-        // Clear all existing platforms
-        this.platforms = [];
-        
-        // Generate platforms in a wider area around the player
-        const platformsPerRow = Math.floor(this.canvas.width / 120);
-        const verticalSpacing = 40;
-        const horizontalSpacing = this.canvas.width / platformsPerRow;
-        
-        // Generate platforms from way above to way below current view
-        const startRow = Math.floor(this.player.y / verticalSpacing) - 20;
-        const endRow = startRow + 50;
-        
-        let lastNote = null;
-        
-        for (let row = startRow; row < endRow; row++) {
-            for (let col = 0; col < platformsPerRow; col++) {
-                if (Math.random() * 100 > this.platformDensityTarget) continue;
-                
-                const xOffset = (Math.random() - 0.5) * 30;
-                const yOffset = (Math.random() - 0.5) * 10;
-                
-                let note;
-                do {
-                    note = this.notes[Math.floor(Math.random() * this.notes.length)];
-                } while (note === lastNote && this.notes.length > 1);
-                
-                this.platforms.push({
-                    x: col * horizontalSpacing + xOffset + 10,
-                    y: row * verticalSpacing + yOffset,
-                    width: 60,
-                    height: 10,
-                    note: note,
-                    color: this.noteColors[note],
-                    hit: false
-                });
-                lastNote = note;
-            }
-        }
+        // Just call initializePlatforms to regenerate everything
+        this.initializePlatforms();
     }
     
     detectMobile() {
@@ -1311,197 +1285,25 @@ class MusicalDoodleJump {
     }
     
     generateMorePlatforms() {
-        if (this.isMobile) {
-            this.generateEndlessPlatformsMobile();
-        } else {
-            this.generatePlatformsDesktop();
+        // No longer dynamically generating platforms
+        // All platforms are pre-generated at initialization
+        // Don't clean up platforms on mobile since we pre-generated them all
+        // This preserves the consistent platform field
+        
+        if (!this.isMobile) {
+            // On desktop, still do some cleanup for memory
+            const cleanupDistance = this.canvas.width * 2;
+            const cleanupHeight = 2000;
+            
+            // Only keep platforms that are reasonably close
+            this.platforms = this.platforms.filter(p => 
+                Math.abs(p.x - this.player.x) < cleanupDistance &&
+                Math.abs(p.y - this.player.y) < cleanupHeight
+            );
         }
+        // On mobile, keep all platforms since we want the vast pre-generated field
     }
     
-    generatePlatformsDesktop() {
-        // Original desktop logic - only vertical generation
-        const highestPlatform = Math.min(...this.platforms.map(p => p.y));
-        const lowestPlatform = Math.max(...this.platforms.map(p => p.y));
-        const platformsPerRow = Math.floor(this.canvas.width / 120);
-        const verticalSpacing = 40;
-        const horizontalSpacing = this.canvas.width / platformsPerRow;
-        
-        if (highestPlatform > -200) {
-            let lastNote = null;
-            for (let row = 0; row < 10; row++) {
-                for (let col = 0; col < platformsPerRow; col++) {
-                    if (Math.random() * 100 > this.platformDensityTarget) continue;
-                    
-                    const xOffset = (Math.random() - 0.5) * 30;
-                    const yOffset = (Math.random() - 0.5) * 10;
-                    
-                    let note;
-                    do {
-                        note = this.notes[Math.floor(Math.random() * this.notes.length)];
-                    } while (note === lastNote && this.notes.length > 1);
-                    
-                    this.platforms.push({
-                        x: col * horizontalSpacing + xOffset + 10,
-                        y: highestPlatform - (row + 1) * verticalSpacing + yOffset,
-                        width: 60,
-                        height: 10,
-                        note: note,
-                        color: this.noteColors[note],
-                        hit: false
-                    });
-                    lastNote = note;
-                }
-            }
-        }
-        
-        if (lowestPlatform < this.canvas.height + 200) {
-            let lastNote = null;
-            for (let row = 0; row < 10; row++) {
-                for (let col = 0; col < platformsPerRow; col++) {
-                    if (Math.random() * 100 > this.platformDensityTarget) continue;
-                    
-                    const xOffset = (Math.random() - 0.5) * 30;
-                    const yOffset = (Math.random() - 0.5) * 10;
-                    
-                    let note;
-                    do {
-                        note = this.notes[Math.floor(Math.random() * this.notes.length)];
-                    } while (note === lastNote && this.notes.length > 1);
-                    
-                    this.platforms.push({
-                        x: col * horizontalSpacing + xOffset + 10,
-                        y: lowestPlatform + (row + 1) * verticalSpacing + yOffset,
-                        width: 60,
-                        height: 10,
-                        note: note,
-                        color: this.noteColors[note],
-                        hit: false
-                    });
-                    lastNote = note;
-                }
-            }
-        }
-        
-        this.platforms = this.platforms.filter(p => p.y > -500 && p.y < this.canvas.height + 500);
-    }
-    
-    generateEndlessPlatformsMobile() {
-        const horizontalSpacing = 120;
-        const verticalSpacing = 40;
-        
-        // Much smaller generation bounds to prevent massive areas
-        const generationDistance = this.canvas.width * 0.6;  // Reduced from 0.8
-        const viewportLeft = this.cameraX - generationDistance;
-        const viewportRight = this.cameraX + generationDistance;
-        const viewportTop = Math.min(-300, this.player.y - 300);
-        const viewportBottom = Math.max(this.canvas.height + 300, this.player.y + 500);
-        
-        // Find existing platform bounds
-        const existingPlatforms = this.platforms;
-        const leftmostPlatform = existingPlatforms.length > 0 ? Math.min(...existingPlatforms.map(p => p.x)) : this.cameraX;
-        const rightmostPlatform = existingPlatforms.length > 0 ? Math.max(...existingPlatforms.map(p => p.x)) : this.cameraX;
-        const highestPlatform = existingPlatforms.length > 0 ? Math.min(...existingPlatforms.map(p => p.y)) : 0;
-        const lowestPlatform = existingPlatforms.length > 0 ? Math.max(...existingPlatforms.map(p => p.y)) : this.canvas.height;
-        
-        // Generate smaller incremental areas to prevent massive generation
-        const maxGenerationWidth = 300;  // Much smaller fixed width for incremental generation
-        const maxGenerationHeight = this.canvas.height * 0.5;
-        
-        // Generate platforms to the left if needed (limited area)
-        if (leftmostPlatform > viewportLeft) {
-            const leftBound = Math.max(viewportLeft, leftmostPlatform - maxGenerationWidth);
-            // Use full screen height for left generation too
-            this.generatePlatformsInRegion(
-                leftBound, leftmostPlatform,
-                -200,  // Fixed top bound
-                this.canvas.height + 200,  // Fixed bottom bound covering full screen
-                horizontalSpacing, verticalSpacing
-            );
-        }
-        
-        // Generate platforms to the right if needed (limited area)
-        if (rightmostPlatform < viewportRight) {
-            const rightBound = Math.min(viewportRight, rightmostPlatform + maxGenerationWidth);
-            // Use full screen height for right generation, not player-relative
-            this.generatePlatformsInRegion(
-                rightmostPlatform, rightBound,
-                -200,  // Fixed top bound
-                this.canvas.height + 200,  // Fixed bottom bound covering full screen
-                horizontalSpacing, verticalSpacing
-            );
-        }
-        
-        // Generate platforms above if needed (current viewport width only)
-        if (highestPlatform > viewportTop) {
-            const topBound = Math.max(viewportTop, highestPlatform - maxGenerationHeight);
-            this.generatePlatformsInRegion(
-                this.cameraX - generationDistance * 0.5, this.cameraX + generationDistance * 0.5,
-                topBound, highestPlatform,
-                horizontalSpacing, verticalSpacing
-            );
-        }
-        
-        // Generate platforms below if needed (current viewport width only)
-        if (lowestPlatform < viewportBottom) {
-            const bottomBound = Math.min(viewportBottom, lowestPlatform + maxGenerationHeight);
-            this.generatePlatformsInRegion(
-                this.cameraX - generationDistance * 0.5, this.cameraX + generationDistance * 0.5,
-                lowestPlatform, bottomBound,
-                horizontalSpacing, verticalSpacing
-            );
-        }
-        
-        // Remove platforms that are far from camera
-        const cleanupDistance = this.canvas.width * 1.5;  // Reduced from 3 to cleanup more aggressively
-        this.platforms = this.platforms.filter(p => 
-            Math.abs(p.x - this.cameraX) < cleanupDistance &&
-            p.y > -500 && p.y < this.canvas.height + 500
-        );
-    }
-    
-    generatePlatformsInRegion(leftX, rightX, topY, bottomY, horizontalSpacing, verticalSpacing) {
-        const startCol = Math.floor(leftX / horizontalSpacing);
-        const endCol = Math.ceil(rightX / horizontalSpacing);
-        const startRow = Math.floor(topY / verticalSpacing);
-        const endRow = Math.ceil(bottomY / verticalSpacing);
-        
-        let lastNote = null;
-        
-        for (let row = startRow; row < endRow; row++) {
-            for (let col = startCol; col < endCol; col++) {
-                // Apply density check consistently - skip if random value exceeds target
-                if (Math.random() * 100 > this.platformDensityTarget) continue;
-                
-                const baseX = col * horizontalSpacing;
-                const baseY = row * verticalSpacing;
-                
-                // Skip if platform already exists at this position (more precise check)
-                const existingPlatform = this.platforms.find(p => 
-                    Math.abs(p.x - baseX) < 80 && Math.abs(p.y - baseY) < 30
-                );
-                if (existingPlatform) continue;
-                
-                const xOffset = (Math.random() - 0.5) * 30;
-                const yOffset = (Math.random() - 0.5) * 10;
-                
-                let note;
-                do {
-                    note = this.notes[Math.floor(Math.random() * this.notes.length)];
-                } while (note === lastNote && this.notes.length > 1);
-                
-                this.platforms.push({
-                    x: baseX + xOffset + 10,
-                    y: baseY + yOffset,
-                    width: 60,
-                    height: 10,
-                    note: note,
-                    color: this.noteColors[note],
-                    hit: false
-                });
-                lastNote = note;
-            }
-        }
-    }
     
     calculatePlatformDensity() {
         // Calculate platform density in current viewport
