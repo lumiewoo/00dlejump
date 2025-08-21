@@ -75,6 +75,10 @@ class MusicalDoodleJump {
         this.touchHeld = false;
         this.touchDirection = 0; // -1 for left, 1 for right, 0 for none
         
+        // Platform density tracking
+        this.platformDensity = 0; // Current platform density percentage (display value)
+        this.platformDensityTarget = 20; // Target density controlled by slider (10-80%)
+        
         this.scales = {
             major: [0, 2, 4, 5, 7, 9, 11, 12],
             minor: [0, 2, 3, 5, 7, 8, 10, 12],
@@ -197,6 +201,12 @@ class MusicalDoodleJump {
         document.getElementById('arpLengthSelect').addEventListener('change', (e) => {
             this.arpLength = parseFloat(e.target.value);
         });
+        
+        document.getElementById('platformDensitySlider').addEventListener('input', (e) => {
+            this.platformDensityTarget = parseInt(e.target.value);
+            document.getElementById('platformDensityValue').textContent = this.platformDensityTarget + '%';
+            this.regenerateAllPlatforms();
+        });
     }
     
     updateArpControls() {
@@ -216,6 +226,7 @@ class MusicalDoodleJump {
     }
     
     initializePlatforms() {
+        this.platforms = [];
         const platformsPerRow = Math.floor(this.canvas.width / 120);
         const verticalSpacing = 40;
         const horizontalSpacing = this.canvas.width / platformsPerRow;
@@ -225,7 +236,48 @@ class MusicalDoodleJump {
         
         for (let row = -5; row < rows; row++) {
             for (let col = 0; col < platformsPerRow; col++) {
-                if (Math.random() > 0.2) continue;
+                if (Math.random() * 100 > this.platformDensityTarget) continue;
+                
+                const xOffset = (Math.random() - 0.5) * 30;
+                const yOffset = (Math.random() - 0.5) * 10;
+                
+                let note;
+                do {
+                    note = this.notes[Math.floor(Math.random() * this.notes.length)];
+                } while (note === lastNote && this.notes.length > 1);
+                
+                this.platforms.push({
+                    x: col * horizontalSpacing + xOffset + 10,
+                    y: row * verticalSpacing + yOffset,
+                    width: 60,
+                    height: 10,
+                    note: note,
+                    color: this.noteColors[note],
+                    hit: false
+                });
+                lastNote = note;
+            }
+        }
+    }
+    
+    regenerateAllPlatforms() {
+        // Clear all existing platforms
+        this.platforms = [];
+        
+        // Generate platforms in a wider area around the player
+        const platformsPerRow = Math.floor(this.canvas.width / 120);
+        const verticalSpacing = 40;
+        const horizontalSpacing = this.canvas.width / platformsPerRow;
+        
+        // Generate platforms from way above to way below current view
+        const startRow = Math.floor(this.player.y / verticalSpacing) - 20;
+        const endRow = startRow + 50;
+        
+        let lastNote = null;
+        
+        for (let row = startRow; row < endRow; row++) {
+            for (let col = 0; col < platformsPerRow; col++) {
+                if (Math.random() * 100 > this.platformDensityTarget) continue;
                 
                 const xOffset = (Math.random() - 0.5) * 30;
                 const yOffset = (Math.random() - 0.5) * 10;
@@ -1037,6 +1089,7 @@ class MusicalDoodleJump {
         }
         
         this.generateMorePlatforms();
+        this.calculatePlatformDensity();
         
         // Bounce when hitting bottom of screen
         if (this.player.y > this.canvas.height - this.player.height) {
@@ -1058,7 +1111,7 @@ class MusicalDoodleJump {
             let lastNote = null;
             for (let row = 0; row < 10; row++) {
                 for (let col = 0; col < platformsPerRow; col++) {
-                    if (Math.random() > 0.2) continue;
+                    if (Math.random() * 100 > this.platformDensityTarget) continue;
                     
                     const xOffset = (Math.random() - 0.5) * 30;
                     const yOffset = (Math.random() - 0.5) * 10;
@@ -1086,7 +1139,7 @@ class MusicalDoodleJump {
             let lastNote = null;
             for (let row = 0; row < 10; row++) {
                 for (let col = 0; col < platformsPerRow; col++) {
-                    if (Math.random() > 0.2) continue;
+                    if (Math.random() * 100 > this.platformDensityTarget) continue;
                     
                     const xOffset = (Math.random() - 0.5) * 30;
                     const yOffset = (Math.random() - 0.5) * 10;
@@ -1111,6 +1164,37 @@ class MusicalDoodleJump {
         }
         
         this.platforms = this.platforms.filter(p => p.y > -500 && p.y < this.canvas.height + 500);
+    }
+    
+    calculatePlatformDensity() {
+        // Calculate platform density in current viewport
+        const viewportHeight = this.canvas.height;
+        const viewportTop = 0;
+        const viewportBottom = viewportHeight;
+        
+        // Get platforms visible in current viewport
+        const visiblePlatforms = this.platforms.filter(p => 
+            p.y >= viewportTop && p.y <= viewportBottom
+        );
+        
+        // Calculate maximum possible platforms in viewport
+        const platformsPerRow = Math.floor(this.canvas.width / 120);
+        const verticalSpacing = 40;
+        const maxRows = Math.ceil(viewportHeight / verticalSpacing);
+        const maxPossiblePlatforms = platformsPerRow * maxRows;
+        
+        // Calculate density percentage
+        if (maxPossiblePlatforms === 0) {
+            this.platformDensity = 0;
+        } else {
+            this.platformDensity = Math.round((visiblePlatforms.length / maxPossiblePlatforms) * 100);
+        }
+        
+        // Update the HTML element
+        const densityElement = document.getElementById('platformDensityValue');
+        if (densityElement) {
+            densityElement.textContent = this.platformDensity + '%';
+        }
     }
     
     resetGame() {

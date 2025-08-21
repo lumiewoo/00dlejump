@@ -177,6 +177,7 @@
 <body>
     <div id="gameContainer">
         <div id="genderSelector">
+            <span style="margin-right: 10px; font-weight: bold;">Gender:</span>
             <button id="genderM" class="active">M</button>
             <button id="genderF">F</button>
             <button id="genderNB">NB</button>
@@ -279,6 +280,12 @@
                 <option value="0.5">1/2</option>
                 <option value="1">1</option>
             </select>
+            
+            <label>Platform Density:</label>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <input type="range" id="platformDensitySlider" min="10" max="80" value="20" style="width: 100px;">
+                <span id="platformDensityValue">20%</span>
+            </div>
         </div>
         <div id="status">Status: Playing</div>
         <canvas id="gameCanvas"></canvas>
