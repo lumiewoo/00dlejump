@@ -430,6 +430,9 @@ class MusicalDoodleJump {
             
             // Setup hamburger menu toggle
             this.setupHamburgerMenu();
+            
+            // Show welcome dialog for audio initialization
+            this.showMobileWelcomeDialog();
         }
     }
     
@@ -541,8 +544,8 @@ class MusicalDoodleJump {
             this.analogStick.jumpTriggered = false;
         }
         
-        // Handle fall through
-        if (this.analogStick.deltaY > deadzone) {
+        // Handle fall through - require full down position (90% down)
+        if (this.analogStick.deltaY > 0.9) {
             this.fallingThrough = true;
         } else {
             this.fallingThrough = false;
@@ -576,6 +579,39 @@ class MusicalDoodleJump {
                 controls.classList.remove('mobile-visible');
                 controls.classList.add('mobile-hidden');
                 hamburgerIcon.textContent = '☰';
+            }
+        });
+    }
+    
+    showMobileWelcomeDialog() {
+        const dialog = document.getElementById('mobileWelcomeDialog');
+        const playButton = document.getElementById('playButton');
+        
+        // Show the dialog
+        dialog.style.display = 'flex';
+        
+        // Handle play button click
+        playButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            // Initialize audio context
+            this.initializeAudio();
+            
+            // Hide the dialog with a smooth transition
+            dialog.style.opacity = '0';
+            dialog.style.transition = 'opacity 0.3s ease';
+            
+            setTimeout(() => {
+                dialog.style.display = 'none';
+                dialog.style.opacity = '1';
+                dialog.style.transition = '';
+            }, 300);
+        });
+        
+        // Also allow tapping the dialog background to dismiss
+        dialog.addEventListener('click', (e) => {
+            if (e.target === dialog) {
+                playButton.click();
             }
         });
     }
@@ -1353,9 +1389,9 @@ class MusicalDoodleJump {
         const horizontalSpacing = 120;
         const verticalSpacing = 40;
         
-        // Calculate viewport bounds in world coordinates
-        const viewportLeft = this.cameraX - this.canvas.width;
-        const viewportRight = this.cameraX + this.canvas.width * 2;
+        // Calculate viewport bounds in world coordinates (reduced for better density control)
+        const viewportLeft = this.cameraX - this.canvas.width * 0.75;
+        const viewportRight = this.cameraX + this.canvas.width * 1.25;
         const viewportTop = -500;
         const viewportBottom = this.canvas.height + 500;
         

@@ -174,7 +174,102 @@
                 max-height: 60vh;
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
+                /* Custom scrollbar for mobile */
+                scrollbar-width: thin;
+                scrollbar-color: rgba(0, 0, 0, 0.6) rgba(255, 255, 255, 0.3);
             }
+            
+            /* Webkit scrollbar styling for mobile controls */
+            #controls.mobile-visible::-webkit-scrollbar {
+                width: 8px;
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 4px;
+            }
+            
+            #controls.mobile-visible::-webkit-scrollbar-track {
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 4px;
+                margin: 2px;
+            }
+            
+            #controls.mobile-visible::-webkit-scrollbar-thumb {
+                background: rgba(0, 0, 0, 0.6);
+                border-radius: 4px;
+                border: 1px solid rgba(255, 255, 255, 0.5);
+                min-height: 20px;
+            }
+            
+            #controls.mobile-visible::-webkit-scrollbar-thumb:hover {
+                background: rgba(0, 0, 0, 0.8);
+            }
+            
+            #controls.mobile-visible::-webkit-scrollbar-thumb:active {
+                background: rgba(0, 0, 0, 0.9);
+            }
+        }
+        
+        /* Mobile Welcome Dialog */
+        #mobileWelcomeDialog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        #welcomeDialogContent {
+            background: linear-gradient(135deg, #f4acca 0%, #f6f6e9 100%);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border: 3px solid #333;
+            max-width: 300px;
+            width: 80%;
+        }
+        
+        #welcomeDialogContent h2 {
+            margin: 0 0 20px 0;
+            color: #333;
+            font-size: 32px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        #welcomeDialogContent p {
+            margin: 0 0 30px 0;
+            color: #333;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        #playButton {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+            transition: all 0.3s ease;
+            border: 2px solid #333;
+        }
+        
+        #playButton:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+        
+        #playButton:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 10px rgba(76, 175, 80, 0.3);
         }
         
         /* Mobile Gamepad Styles */
@@ -439,6 +534,15 @@
                 <div id="actionButtons">
                     <div id="buttonA">A</div>
                 </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Welcome Dialog -->
+        <div id="mobileWelcomeDialog" style="display: none;">
+            <div id="welcomeDialogContent">
+                <h2>🎵 00dlejump</h2>
+                <p>Tap to begin :)</p>
+                <button id="playButton">Play</button>
             </div>
         </div>
     </div>
