@@ -568,8 +568,24 @@ class MusicalDoodleJump {
         playButton.addEventListener('click', (e) => {
             e.preventDefault();
             
-            // Initialize audio context
+            // Initialize audio context with proper handling for mobile Chrome
             this.initializeAudio();
+            
+            // Ensure audio context is resumed after a short delay
+            setTimeout(() => {
+                if (this.audioContext && this.audioContext.state === 'suspended') {
+                    this.audioContext.resume().then(() => {
+                        this.logAudioDebug('AudioContext resumed after dialog click');
+                        // Play a test sound to ensure Chrome allows audio
+                        this.playTestSound();
+                    }).catch(err => {
+                        this.logAudioDebug('Failed to resume after dialog: ' + err.message);
+                    });
+                } else if (this.audioContext) {
+                    // Play test sound if context is already running
+                    this.playTestSound();
+                }
+            }, 100);
             
             // Hide the dialog with a smooth transition
             dialog.style.opacity = '0';
@@ -793,17 +809,30 @@ class MusicalDoodleJump {
         // Ensure audio is initialized and resumed
         if (!this.audioContext) {
             this.initializeAudio();
+            // Early return if still no context
+            if (!this.audioContext) {
+                this.logAudioDebug('Failed to create AudioContext in playNote');
+                return;
+            }
         }
         
-        // Force resume audio context if suspended (especially important on mobile)
-        if (this.audioContext && this.audioContext.state === 'suspended') {
+        // Force resume audio context if suspended (especially important on mobile Chrome)
+        if (this.audioContext.state === 'suspended') {
             this.audioContext.resume().then(() => {
                 this.logAudioDebug('AudioContext resumed for playNote');
+                // Actually play the note after resuming
+                this.doPlayNote(note);
             }).catch(err => {
                 this.logAudioDebug('Failed to resume AudioContext: ' + err.message);
             });
+            return; // Don't play note until context is resumed
         }
         
+        // If context is running, play the note
+        this.doPlayNote(note);
+    }
+    
+    doPlayNote(note) {
         // Debug logging for mobile
         if (this.isMobile) {
             this.logAudioDebug(`Playing note: ${note}`);
