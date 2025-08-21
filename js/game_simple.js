@@ -1260,6 +1260,15 @@ class MusicalDoodleJump {
     }
     
     generateMorePlatforms() {
+        if (this.isMobile) {
+            this.generateEndlessPlatformsMobile();
+        } else {
+            this.generatePlatformsDesktop();
+        }
+    }
+    
+    generatePlatformsDesktop() {
+        // Original desktop logic - only vertical generation
         const highestPlatform = Math.min(...this.platforms.map(p => p.y));
         const lowestPlatform = Math.max(...this.platforms.map(p => p.y));
         const platformsPerRow = Math.floor(this.canvas.width / 120);
@@ -1323,6 +1332,110 @@ class MusicalDoodleJump {
         }
         
         this.platforms = this.platforms.filter(p => p.y > -500 && p.y < this.canvas.height + 500);
+    }
+    
+    generateEndlessPlatformsMobile() {
+        const horizontalSpacing = 120;
+        const verticalSpacing = 40;
+        
+        // Calculate viewport bounds in world coordinates
+        const viewportLeft = this.cameraX - this.canvas.width;
+        const viewportRight = this.cameraX + this.canvas.width * 2;
+        const viewportTop = -500;
+        const viewportBottom = this.canvas.height + 500;
+        
+        // Find existing platform bounds
+        const existingPlatforms = this.platforms;
+        const leftmostPlatform = existingPlatforms.length > 0 ? Math.min(...existingPlatforms.map(p => p.x)) : this.cameraX;
+        const rightmostPlatform = existingPlatforms.length > 0 ? Math.max(...existingPlatforms.map(p => p.x)) : this.cameraX;
+        const highestPlatform = existingPlatforms.length > 0 ? Math.min(...existingPlatforms.map(p => p.y)) : 0;
+        const lowestPlatform = existingPlatforms.length > 0 ? Math.max(...existingPlatforms.map(p => p.y)) : this.canvas.height;
+        
+        // Generate platforms to the left if needed
+        if (leftmostPlatform > viewportLeft) {
+            this.generatePlatformsInRegion(
+                viewportLeft, leftmostPlatform,
+                viewportTop, viewportBottom,
+                horizontalSpacing, verticalSpacing
+            );
+        }
+        
+        // Generate platforms to the right if needed
+        if (rightmostPlatform < viewportRight) {
+            this.generatePlatformsInRegion(
+                rightmostPlatform, viewportRight,
+                viewportTop, viewportBottom,
+                horizontalSpacing, verticalSpacing
+            );
+        }
+        
+        // Generate platforms above if needed
+        if (highestPlatform > viewportTop) {
+            this.generatePlatformsInRegion(
+                viewportLeft, viewportRight,
+                viewportTop, highestPlatform,
+                horizontalSpacing, verticalSpacing
+            );
+        }
+        
+        // Generate platforms below if needed
+        if (lowestPlatform < viewportBottom) {
+            this.generatePlatformsInRegion(
+                viewportLeft, viewportRight,
+                lowestPlatform, viewportBottom,
+                horizontalSpacing, verticalSpacing
+            );
+        }
+        
+        // Remove platforms that are far from camera
+        const cleanupDistance = this.canvas.width * 3;
+        this.platforms = this.platforms.filter(p => 
+            Math.abs(p.x - this.cameraX) < cleanupDistance &&
+            p.y > -1000 && p.y < this.canvas.height + 1000
+        );
+    }
+    
+    generatePlatformsInRegion(leftX, rightX, topY, bottomY, horizontalSpacing, verticalSpacing) {
+        const startCol = Math.floor(leftX / horizontalSpacing);
+        const endCol = Math.ceil(rightX / horizontalSpacing);
+        const startRow = Math.floor(topY / verticalSpacing);
+        const endRow = Math.ceil(bottomY / verticalSpacing);
+        
+        let lastNote = null;
+        
+        for (let row = startRow; row < endRow; row++) {
+            for (let col = startCol; col < endCol; col++) {
+                if (Math.random() * 100 > this.platformDensityTarget) continue;
+                
+                const baseX = col * horizontalSpacing;
+                const baseY = row * verticalSpacing;
+                
+                // Skip if platform already exists at this position
+                const existingPlatform = this.platforms.find(p => 
+                    Math.abs(p.x - baseX) < 60 && Math.abs(p.y - baseY) < 20
+                );
+                if (existingPlatform) continue;
+                
+                const xOffset = (Math.random() - 0.5) * 30;
+                const yOffset = (Math.random() - 0.5) * 10;
+                
+                let note;
+                do {
+                    note = this.notes[Math.floor(Math.random() * this.notes.length)];
+                } while (note === lastNote && this.notes.length > 1);
+                
+                this.platforms.push({
+                    x: baseX + xOffset + 10,
+                    y: baseY + yOffset,
+                    width: 60,
+                    height: 10,
+                    note: note,
+                    color: this.noteColors[note],
+                    hit: false
+                });
+                lastNote = note;
+            }
+        }
     }
     
     calculatePlatformDensity() {
